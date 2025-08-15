@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "416302423771",
+    "project_id": "cowboy-9bf1f",
+    "storage_bucket": "cowboy-9bf1f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416302423771:android:63a3a1320c6341b649b6fe",
+        "android_client_info": {
+          "package_name": "com.example.dedicated_cowboy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6Qh5vtNra-mGQR9hUEPX8c9DiZM8rnbM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
