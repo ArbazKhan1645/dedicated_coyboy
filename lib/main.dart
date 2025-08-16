@@ -7,6 +7,8 @@ import 'package:dedicated_cowboy/app/services/app_states_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/bindings/initial_bindings.dart';
 import 'package:dedicated_cowboy/firebase_options.dart';
 import 'package:dedicated_cowboy/views/welcome/welcome_view.dart';
@@ -47,8 +49,11 @@ Future<void> main() async {
 
   await Get.putAsync(() => ai_chat_service.init());
 
-  final userStatusService = UserStatusService();
-  userStatusService.init();
+  // final userStatusService = UserStatusService();
+  // userStatusService.init();
+
+  await NotificationService().initialize();
+  await SubscriptionService().initializeSubscriptionPlans();
 
   runApp(MyApp());
 }

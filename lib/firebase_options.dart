@@ -60,11 +60,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBH73pRnqv8rRwGOO_v_bXa0YweoIbImD8',
-    appId: '1:416302423771:ios:f49e55229e0574be49b6fe',
+    appId: '1:416302423771:ios:5ef8ad85c575d87149b6fe',
     messagingSenderId: '416302423771',
     projectId: 'cowboy-9bf1f',
     storageBucket: 'cowboy-9bf1f.firebasestorage.app',
-    iosBundleId: 'com.example.dedicatedCowboy',
+    iosBundleId: 'com.west.dedicatedCowboy',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'cowboy-9bf1f.firebasestorage.app',
     measurementId: 'G-ZLZCJYF4EX',
   );
+
 }

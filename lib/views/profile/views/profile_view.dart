@@ -1,9 +1,10 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:dedicated_cowboy/app/models/user_model.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/views/notifications/notifications.dart';
 import 'package:dedicated_cowboy/views/predrences/prefrences.dart';
-import 'package:dedicated_cowboy/views/subscriptions.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -481,7 +482,11 @@ class ProfileScreen extends StatelessWidget {
           title: 'Subscriptions',
           subtitle: 'Manage your active subscriptions',
           onTap: () {
-            Get.to(() => SubscriptionManagementScreen());
+            Get.to(
+              () => SubscriptionManagementScreen(
+                userId: FirebaseAuth.instance.currentUser!.uid,
+              ),
+            );
           },
         ),
         _buildMenuItem(
