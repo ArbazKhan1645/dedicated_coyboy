@@ -1,6 +1,7 @@
 // list_business_form.dart
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/listing/bussiness_listing/controller/list_bussiness_controller.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/list_item_form.dart';
 import 'package:dedicated_cowboy/views/map/map_select.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:dedicated_cowboy/widgets/textfield_widget.dart';
@@ -8,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:dedicated_cowboy/consts/appthemes.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:multi_select_flutter/dialog/multi_select_dialog_field.dart';
+import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'package:multi_select_flutter/util/multi_select_item.dart';
 
 class ListBusinessForm extends StatelessWidget {
   const ListBusinessForm({Key? key}) : super(key: key);
@@ -66,7 +70,7 @@ class ListBusinessForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: true,
                 labelText: 'Business Name',
-                hintText: 'e.g Tony & Western Wear',
+                hintText: 'e.g Lazy R Western Wear',
                 controller: controller.businessNameController,
               ),
 
@@ -77,7 +81,7 @@ class ListBusinessForm extends StatelessWidget {
                 fontSize: 12.sp,
                 labelText: 'Description',
                 hintText:
-                    'Tell us about your business and what you offer, sell or service!',
+                    'Tell us about your business and what you offer, sell or support!',
                 controller: controller.descriptionController,
                 maxLines: 5,
                 contentPadding: const EdgeInsets.symmetric(
@@ -138,17 +142,15 @@ class ListBusinessForm extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Business Category Dropdown
-              Obx(
-                () => _buildDropdownField(
-                  controller: controller,
-                  label: 'Business Category',
-                  isRequired: true,
-                  value: controller.businessCategoryValue,
-                  items: controller.businessCategories,
-                  onChanged: controller.selectBusinessCategory,
-                ),
+              CustomMultiSelectField(
+                title: 'Business Category',
+                hint: 'Category',
+                items: controller.businessCategories,
+                selectedItems: controller.selectedCategories,
+                onSelectionChanged: (selected) {
+                  controller.selectCategory(selected);
+                },
               ),
-
               const SizedBox(height: 20),
 
               // // Select Subcategory Dropdown
@@ -182,7 +184,7 @@ class ListBusinessForm extends StatelessWidget {
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Website/Online Store',
-                hintText: 'e.g www.377arena.com',
+                hintText: 'Paste your business website or online shop link',
                 controller: controller.websiteController,
                 keyboardType: TextInputType.url,
               ),
@@ -199,7 +201,7 @@ class ListBusinessForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: true,
                 labelText: 'Email',
-                hintText: 'Email Address',
+                hintText: 'Email',
                 controller: controller.emailController,
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: Icon(
@@ -211,27 +213,28 @@ class ListBusinessForm extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Text Field
-              CustomTextField(
-                fontSize: 12.sp,
-                labelText: 'Text',
-                hintText: 'Phone Number for Text',
-                controller: controller.textController,
-                keyboardType: TextInputType.phone,
-                prefixIcon: Icon(
-                  Icons.message_outlined,
-                  color: Colors.grey.shade500,
-                  size: 20,
-                ),
-              ),
+              // // Text Field
+              // CustomTextField(
+              //   fontSize: 12.sp,
+              //   labelText: 'Text',
+              //   hintText: 'Phone Number for Text',
+              //   controller: controller.textController,
+              //   keyboardType: TextInputType.phone,
+              //   prefixIcon: Icon(
+              //     Icons.message_outlined,
+              //     color: Colors.grey.shade500,
+              //     size: 20,
+              //   ),
+              // ),
 
-              const SizedBox(height: 20),
+              // const SizedBox(height: 20),
 
               // Call Field
               CustomTextField(
                 fontSize: 12.sp,
-                labelText: 'Call',
-                hintText: 'Phone Number for Call',
+                labelText: 'Phone',
+                hintText: '123-456-7890',
+                inputFormatters: [PhoneNumberFormatter()],
                 controller: controller.callController,
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icon(
@@ -247,7 +250,7 @@ class ListBusinessForm extends StatelessWidget {
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Facebook/Instagram Link',
-                hintText: 'Facebook or Instagram Profile Link',
+                hintText: 'Drop a link to your socials so we can tag you!',
                 controller: controller.facebookInstagramController,
                 keyboardType: TextInputType.url,
                 prefixIcon: Icon(
@@ -385,12 +388,23 @@ class ListBusinessForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Upload Photos/Video/Attachments',
-          style: Appthemes.textSmall.copyWith(
-            fontFamily: 'popins-bold',
-            color: const Color(0xFF424242),
-          ),
+        Row(
+          children: [
+            Text(
+              'Upload Photos/Video/Attachments',
+              style: Appthemes.textSmall.copyWith(
+                fontFamily: 'popins-bold',
+                color: const Color(0xFF424242),
+              ),
+            ),
+            Text(
+              ' *',
+              style: Appthemes.textSmall.copyWith(
+                color: Colors.red,
+                fontSize: 15.sp,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -405,10 +419,14 @@ class ListBusinessForm extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.attach_file, color: Colors.grey.shade500, size: 20),
+                Icon(
+                  Icons.add_photo_alternate,
+                  color: Colors.grey.shade500,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  'Add images, schedule, videos',
+                  'Add Images, Videos, Documents',
                   style: Appthemes.textSmall.copyWith(
                     color: const Color(0xFF9E9E9E),
                     fontSize: 12.sp,
@@ -420,28 +438,32 @@ class ListBusinessForm extends StatelessWidget {
           ),
         ),
 
-        // Display uploaded images with preview
+        // Display uploaded content
         Obx(() {
-          if (controller.imageUploadStatuses.isNotEmpty) {
-            return Container(
-              margin: const EdgeInsets.only(top: 12),
-              child: Column(
-                children: [
-                  // Image count indicator
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      '${controller.imageUploadStatuses.length} image(s) selected',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFF3B340),
-                      ),
+          final hasImages = controller.imageUploadStatuses.isNotEmpty;
+          final hasVideos = controller.videoUploadStatuses.isNotEmpty;
+          final hasAttachments = controller.attachmentUploadStatuses.isNotEmpty;
+
+          if (!hasImages && !hasVideos && !hasAttachments) {
+            return const SizedBox.shrink();
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Images Section
+                if (hasImages) ...[
+                  Text(
+                    'Images (${controller.imageUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
                     ),
                   ),
-
-                  // Grid of images
+                  const SizedBox(height: 8),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -457,37 +479,64 @@ class ListBusinessForm extends StatelessWidget {
                       final imageFile = controller.imageUploadStatuses[index];
                       return Stack(
                         children: [
-                          // Image preview
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
+                                color:
+                                    imageFile.isUploaded
+                                        ? Color(0xFFF2B342)
+                                        : imageFile.isUploading
+                                        ? Colors.orange
+                                        : Colors.red,
+                                width: 2,
                               ),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(7),
-                              child: Image.file(
-                                imageFile.file,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.shade200,
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey.shade400,
-                                      size: 30,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Stack(
+                                children: [
+                                  Image.file(
+                                    imageFile.file,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey.shade400,
+                                          size: 30,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (imageFile.isUploading)
+                                    Container(
+                                      color: Colors.black.withOpacity(0.5),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
+                                  if (imageFile.error != null)
+                                    Container(
+                                      color: Colors.red.withOpacity(0.5),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.error,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),
-
-                          // Remove button
                           Positioned(
                             top: 4,
                             right: 4,
@@ -518,11 +567,227 @@ class ListBusinessForm extends StatelessWidget {
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
                 ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
+
+                // Videos Section
+                if (hasVideos) ...[
+                  Text(
+                    'Videos (${controller.videoUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: controller.videoUploadStatuses.length,
+                    itemBuilder: (context, index) {
+                      final videoFile = controller.videoUploadStatuses[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                videoFile.isUploaded
+                                    ? Color(0xFFF2B342)
+                                    : videoFile.isUploading
+                                    ? Colors.orange
+                                    : Colors.red,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C3E50),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    videoFile.file.path.split('/').last,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    videoFile.isUploaded
+                                        ? 'Uploaded'
+                                        : videoFile.isUploading
+                                        ? 'Uploading...'
+                                        : 'Failed',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          videoFile.isUploaded
+                                              ? Color(0xFFF2B342)
+                                              : videoFile.isUploading
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (videoFile.isUploading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              IconButton(
+                                onPressed:
+                                    () => controller.removeVideo(videoFile),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Attachments Section
+                if (hasAttachments) ...[
+                  Text(
+                    'Attachments (${controller.attachmentUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: controller.attachmentUploadStatuses.length,
+                    itemBuilder: (context, index) {
+                      final attachmentFile =
+                          controller.attachmentUploadStatuses[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                attachmentFile.isUploaded
+                                    ? Color(0xFFF2B342)
+                                    : attachmentFile.isUploading
+                                    ? Colors.orange
+                                    : Colors.red,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF2B342),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.description,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    attachmentFile.file.path.split('/').last,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    attachmentFile.isUploaded
+                                        ? 'Uploaded'
+                                        : attachmentFile.isUploading
+                                        ? 'Uploading...'
+                                        : 'Failed',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          attachmentFile.isUploaded
+                                              ? Color(0xFFF2B342)
+                                              : attachmentFile.isUploading
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (attachmentFile.isUploading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              IconButton(
+                                onPressed:
+                                    () => controller.removeAttachment(
+                                      attachmentFile,
+                                    ),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          );
         }),
       ],
     );

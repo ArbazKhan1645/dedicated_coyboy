@@ -1,4 +1,5 @@
 // services/auth_service.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/repository/auth_repository.dart';
 import 'package:dedicated_cowboy/app/utils/exceptions.dart';
@@ -6,15 +7,15 @@ import 'package:dedicated_cowboy/app/utils/exceptions.dart';
 class AuthService {
   final AuthRepository _authRepository;
   UserModel? _currentUser;
-  
+
   AuthService({AuthRepository? authRepository})
-      : _authRepository = authRepository ?? FirebaseAuthRepository();
+    : _authRepository = authRepository ?? FirebaseAuthRepository();
 
   // Getters
   UserModel? get currentUser => _currentUser;
   bool get isSignedIn => _currentUser != null;
   bool get isEmailVerified => _currentUser?.emailVerified ?? false;
-  
+
   // Auth state stream
   Stream<UserModel?> get authStateChanges => _authRepository.authStateChanges;
 
@@ -37,7 +38,10 @@ class AuthService {
     _validatePassword(password);
 
     try {
-      final user = await _authRepository.signInWithEmailAndPassword(email, password);
+      final user = await _authRepository.signInWithEmailAndPassword(
+        email,
+        password,
+      );
       _currentUser = user;
       return user;
     } catch (e) {
@@ -56,17 +60,32 @@ class AuthService {
     _validatePassword(password);
 
     try {
-      final user = await _authRepository.signUpWithEmailAndPassword(email, password);
-      
+      final user = await _authRepository.signUpWithEmailAndPassword(
+        email,
+        password,
+      );
+
       // Update display name if provided
       if (displayName != null && displayName.isNotEmpty) {
+        final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+        final uid = user.uid;
+        final userData = {
+          'email': email,
+          'displayName': displayName,
+          'photoURL': '',
+          'emailVerified': false,
+          'createdAt': DateTime.now(),
+          'uid': uid,
+        };
+        await _firestore.collection('users').doc(uid).set(userData);
+
         await _authRepository.updateProfile(displayName: displayName.trim());
         await _authRepository.reloadUser();
         _currentUser = await _authRepository.getCurrentUser();
       } else {
         _currentUser = user;
       }
-      
+
       return _currentUser!;
     } catch (e) {
       _currentUser = null;
@@ -87,7 +106,7 @@ class AuthService {
   // Forgot Password
   Future<void> sendPasswordResetEmail(String email) async {
     _validateEmail(email);
-    
+
     try {
       await _authRepository.sendPasswordResetEmail(email);
     } catch (e) {
@@ -98,10 +117,7 @@ class AuthService {
   // Send Email Verification
   Future<void> sendEmailVerification() async {
     if (_currentUser == null) {
-      throw const AuthException(
-        message: 'No user signed in.',
-        code: 'no-user',
-      );
+      throw const AuthException(message: 'No user signed in.', code: 'no-user');
     }
 
     if (_currentUser!.emailVerified) {
@@ -134,10 +150,7 @@ class AuthService {
     String? photoURL,
   }) async {
     if (_currentUser == null) {
-      throw const AuthException(
-        message: 'No user signed in.',
-        code: 'no-user',
-      );
+      throw const AuthException(message: 'No user signed in.', code: 'no-user');
     }
 
     try {
@@ -145,7 +158,7 @@ class AuthService {
         displayName: displayName?.trim(),
         photoURL: photoURL?.trim(),
       );
-      
+
       await reloadUser();
       return _currentUser!;
     } catch (e) {
@@ -191,12 +204,12 @@ class AuthValidator {
     if (email == null || email.isEmpty) {
       return 'Email is required';
     }
-    
+
     final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
     if (!emailRegex.hasMatch(email.trim())) {
       return 'Please enter a valid email address';
     }
-    
+
     return null;
   }
 
@@ -204,23 +217,26 @@ class AuthValidator {
     if (password == null || password.isEmpty) {
       return 'Password is required';
     }
-    
+
     if (password.length < 6) {
       return 'Password must be at least 6 characters long';
     }
-    
+
     return null;
   }
 
-  static String? validateConfirmPassword(String? password, String? confirmPassword) {
+  static String? validateConfirmPassword(
+    String? password,
+    String? confirmPassword,
+  ) {
     if (confirmPassword == null || confirmPassword.isEmpty) {
       return 'Please confirm your password';
     }
-    
+
     if (password != confirmPassword) {
       return 'Passwords do not match';
     }
-    
+
     return null;
   }
 
@@ -229,12 +245,12 @@ class AuthValidator {
       if (displayName.trim().length < 2) {
         return 'Name must be at least 2 characters long';
       }
-      
+
       if (displayName.trim().length > 50) {
         return 'Name must be less than 50 characters';
       }
     }
-    
+
     return null;
   }
 }

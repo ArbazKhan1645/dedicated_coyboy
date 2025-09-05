@@ -4,12 +4,13 @@ class BusinessListing {
   final String? id; // Firebase document ID
   final String? businessName;
   final String? description;
-  final String? businessCategory;
+  final List<String>? businessCategory;
   final String? subcategory;
   final String? address;
   final String? locationCityState;
   final double? latitude;
   final double? longitude;
+  final String? paymentStatus; // New field: payment status
   final String? websiteOnlineStore;
   final List<String>? photoUrls;
   final List<String>? videoUrls;
@@ -30,6 +31,7 @@ class BusinessListing {
     this.description,
     this.businessCategory,
     this.subcategory,
+    this.paymentStatus, // New field
     this.address,
     this.locationCityState,
     this.latitude,
@@ -59,6 +61,7 @@ class BusinessListing {
       'address': address,
       'locationCityState': locationCityState,
       'latitude': latitude,
+      'paymentStatus': paymentStatus,
       'longitude': longitude,
       'websiteOnlineStore': websiteOnlineStore,
       'photoUrls': photoUrls,
@@ -85,32 +88,41 @@ class BusinessListing {
       id: documentId,
       businessName: data['businessName'] as String?,
       description: data['description'] as String?,
-      businessCategory: data['businessCategory'] as String?,
+      businessCategory:
+          data['businessCategory'] != null
+              ? List<String>.from(data['businessCategory'])
+              : null,
       subcategory: data['subcategory'] as String?,
       address: data['address'] as String?,
       locationCityState: data['locationCityState'] as String?,
       latitude: data['latitude']?.toDouble(),
+      paymentStatus: data['paymentStatus'] ?? 'pending',
       longitude: data['longitude']?.toDouble(),
       websiteOnlineStore: data['websiteOnlineStore'] as String?,
-      photoUrls: data['photoUrls'] != null 
-          ? List<String>.from(data['photoUrls']) 
-          : null,
-      videoUrls: data['videoUrls'] != null 
-          ? List<String>.from(data['videoUrls']) 
-          : null,
-      attachmentUrls: data['attachmentUrls'] != null 
-          ? List<String>.from(data['attachmentUrls']) 
-          : null,
+      photoUrls:
+          data['photoUrls'] != null
+              ? List<String>.from(data['photoUrls'])
+              : null,
+      videoUrls:
+          data['videoUrls'] != null
+              ? List<String>.from(data['videoUrls'])
+              : null,
+      attachmentUrls:
+          data['attachmentUrls'] != null
+              ? List<String>.from(data['attachmentUrls'])
+              : null,
       email: data['email'] as String?,
       phoneText: data['phoneText'] as String?,
       phoneCall: data['phoneCall'] as String?,
       facebookInstagramLink: data['facebookInstagramLink'] as String?,
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : null,
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+      createdAt:
+          data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : null,
+      updatedAt:
+          data['updatedAt'] != null
+              ? (data['updatedAt'] as Timestamp).toDate()
+              : null,
       userId: data['userId'] as String?,
       isActive: data['isActive'] as bool? ?? true,
       isVerified: data['isVerified'] as bool? ?? false,
@@ -122,7 +134,7 @@ class BusinessListing {
     String? id,
     String? businessName,
     String? description,
-    String? businessCategory,
+    List<String>? businessCategory,
     String? subcategory,
     String? address,
     String? locationCityState,
@@ -131,6 +143,7 @@ class BusinessListing {
     String? websiteOnlineStore,
     List<String>? photoUrls,
     List<String>? videoUrls,
+    String? paymentStatus,
     List<String>? attachmentUrls,
     String? email,
     String? phoneText,
@@ -159,21 +172,23 @@ class BusinessListing {
       email: email ?? this.email,
       phoneText: phoneText ?? this.phoneText,
       phoneCall: phoneCall ?? this.phoneCall,
-      facebookInstagramLink: facebookInstagramLink ?? this.facebookInstagramLink,
+      facebookInstagramLink:
+          facebookInstagramLink ?? this.facebookInstagramLink,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
       isVerified: isVerified ?? this.isVerified,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
     );
   }
 
   // Validation method
   bool get isValid {
-    return businessName != null && 
-           businessName!.isNotEmpty &&
-           businessCategory != null &&
-           businessCategory!.isNotEmpty;
+    return businessName != null &&
+        businessName!.isNotEmpty &&
+        businessCategory != null &&
+        businessCategory!.isNotEmpty;
   }
 
   // Get primary contact method

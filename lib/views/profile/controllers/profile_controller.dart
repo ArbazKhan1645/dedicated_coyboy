@@ -300,7 +300,7 @@ class ProfileController extends GetxController {
         Get.snackbar(
           'Success',
           'Profile picture updated successfully',
-          backgroundColor: Color(0xFFF3B340),
+          backgroundColor: Color(0xFFF2B342),
           colorText: Colors.white,
         );
       }
@@ -340,11 +340,6 @@ class ProfileController extends GetxController {
       final User? firebaseUser = _auth.currentUser;
       if (firebaseUser == null) throw Exception('No authenticated user');
 
-      // Validate required fields
-      if (emailController.text.trim().isEmpty) {
-        throw Exception('Email is required');
-      }
-
       // Validate password confirmation if new password is provided
       if (newPasswordController.text.isNotEmpty &&
           newPasswordController.text != confirmPasswordController.text) {
@@ -357,7 +352,7 @@ class ProfileController extends GetxController {
         'userName': userNameController.text.trim(),
         'firstName': firstNameController.text.trim(),
         'lastName': lastNameController.text.trim(),
-        'email': emailController.text.trim(),
+
         'phone': phoneController.text.trim(),
         'website': websiteController.text.trim(),
         'address': addressController.text.trim(),
@@ -402,7 +397,7 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Success',
         'Profile updated successfully',
-        backgroundColor: Color(0xFFF3B340),
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
       );
     } catch (e) {
@@ -461,7 +456,7 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Success',
         'Password updated successfully',
-        backgroundColor: Color(0xFFF3B340),
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
       );
     } catch (e) {

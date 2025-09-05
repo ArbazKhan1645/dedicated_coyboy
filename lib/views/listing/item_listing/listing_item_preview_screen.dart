@@ -12,8 +12,10 @@ class ListingItemPreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ListItemController controller = Get.find<ListItemController>();
-
+    final ListItemController controller =
+        Get.isRegistered<ListItemController>()
+            ? Get.find<ListItemController>()
+            : Get.put(ListItemController());
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -39,68 +41,80 @@ class ListingItemPreviewScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Gallery Section
-            _buildImageGallery(controller),
+            // Media Gallery Section (Images, Videos, Attachments)
+            _buildMediaGallery(controller),
 
             const SizedBox(height: 20),
 
             // Item Name
-            _buildInfoText('Item Name :', controller.itemNameController.text),
+            _buildInfoText('Item Name:', controller.itemNameController.text),
 
             const SizedBox(height: 16),
 
             // Description
             _buildInfoText(
-              'Description :',
+              'Description:',
               controller.descriptionController.text,
             ),
 
             const SizedBox(height: 16),
 
-            // Category
-            _buildInfoText('Category :', controller.selectedCategory.value),
+            // Categories
+            _buildCategoriesSection(controller),
 
             const SizedBox(height: 16),
 
             // Subcategory
             _buildInfoText(
-              'Subcategory :',
+              'Subcategory:',
               controller.selectedSubcategory.value,
             ),
 
             const SizedBox(height: 16),
 
-            // Condition
-            _buildInfoText('Condition :', controller.selectedCondition.value),
-
-            const SizedBox(height: 16),
-
             // Brand
-            _buildInfoText('Brand :', controller.brandController.text),
+            _buildInfoText('Brand:', controller.brandController.text),
 
             const SizedBox(height: 16),
 
             // Price
-            _buildInfoText('Price :', '\$${controller.priceController.text}'),
+            _buildInfoText('Price:', '\$${controller.priceController.text}'),
+
+            const SizedBox(height: 16),
+
+            // Size / Dimensions
+            _buildInfoText(
+              'Size / Dimensions:',
+              controller.sizeController.text,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Condition
+            _buildInfoText('Condition:', controller.selectedCondition.value),
 
             const SizedBox(height: 16),
 
             // Link/Website
-            if (controller.linkWebsiteController.text.isNotEmpty)
-              _buildInfoText(
-                'Link/Website :',
-                controller.linkWebsiteController.text,
-              ),
-
-            const SizedBox(height: 16),
-
-            // Size Options
-            _buildSizeSection(controller),
+            _buildInfoText(
+              'Link/Website:',
+              controller.linkWebsiteController.text,
+            ),
 
             const SizedBox(height: 20),
 
             // Location Section
             _buildLocationSection(controller),
+
+            const SizedBox(height: 20),
+
+            // Shipping Info Section
+            _buildShippingSection(controller),
+
+            const SizedBox(height: 20),
+
+            // Contact Information Section
+            _buildContactInfoSection(controller),
 
             const SizedBox(height: 20),
 
@@ -110,13 +124,7 @@ class ListingItemPreviewScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Other Payment Methods Section
-            if (controller.otherPaymentController.text.isNotEmpty)
-              _buildOtherPaymentSection(controller),
-
-            const SizedBox(height: 20),
-
-            // Contact Information Section
-            _buildContactInfoSection(controller),
+            _buildOtherPaymentSection(controller),
 
             const SizedBox(height: 30),
 
@@ -130,17 +138,13 @@ class ListingItemPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGallery(ListItemController controller) {
+  Widget _buildMediaGallery(ListItemController controller) {
     return Obx(() {
-      if (controller.imageUploadStatuses.isNotEmpty) {
-        return SizedBox(
-          height: 300,
-          child:
-              controller.imageUploadStatuses.length == 1
-                  ? _buildSingleImage(controller.imageUploadStatuses.first.file)
-                  : _buildImageGrid(controller.imageUploadStatuses.map((status) => status.file).toList()),
-        );
-      } else {
+      final hasImages = controller.imageUploadStatuses.isNotEmpty;
+      final hasVideos = controller.videoUploadStatuses.isNotEmpty;
+      final hasAttachments = controller.attachmentUploadStatuses.isNotEmpty;
+
+      if (!hasImages && !hasVideos && !hasAttachments) {
         return Container(
           height: 200,
           decoration: BoxDecoration(
@@ -154,7 +158,7 @@ class ListingItemPreviewScreen extends StatelessWidget {
                 Icon(Icons.image, size: 50, color: Colors.grey.shade400),
                 const SizedBox(height: 8),
                 Text(
-                  'No images uploaded',
+                  'No media uploaded',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 16.sp,
@@ -165,6 +169,166 @@ class ListingItemPreviewScreen extends StatelessWidget {
           ),
         );
       }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Images Section
+          if (hasImages) ...[
+            Text(
+              'Images (${controller.imageUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 300,
+              child:
+                  controller.imageUploadStatuses.length == 1
+                      ? controller.imageUploadStatuses.first.uploadedUrl != null
+                          ? _buildSingleNetworkImage(
+                            controller.imageUploadStatuses.first.uploadedUrl!,
+                          )
+                          : _buildSingleImage(
+                            controller.imageUploadStatuses.first.file,
+                          )
+                      : controller.isEditMode.value
+                      ? _buildImageGridNetwork(
+                        controller.imageUploadStatuses
+                            .map((status) => status.uploadedUrl ?? '')
+                            .toList(),
+                      )
+                      : _buildImageGrid(
+                        controller.imageUploadStatuses
+                            .map((status) => status.file)
+                            .toList(),
+                      ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Videos Section
+          if (hasVideos) ...[
+            Text(
+              'Videos (${controller.videoUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.videoUploadStatuses.length,
+              itemBuilder: (context, index) {
+                final videoFile = controller.videoUploadStatuses[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C3E50),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          videoFile.file.path.split('/').last,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Attachments Section
+          if (hasAttachments) ...[
+            Text(
+              'Attachments (${controller.attachmentUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.attachmentUploadStatuses.length,
+              itemBuilder: (context, index) {
+                final attachmentFile =
+                    controller.attachmentUploadStatuses[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF2B342),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.description,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          attachmentFile.file.path.split('/').last,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      );
     });
   }
 
@@ -178,6 +342,129 @@ class ListingItemPreviewScreen extends StatelessWidget {
         height: double.infinity,
       ),
     );
+  }
+
+  Widget _buildSingleNetworkImage(String image) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        image,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      ),
+    );
+  }
+
+  Widget _buildImageGridNetwork(List<String> images) {
+    if (images.length == 2) {
+      return Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[0],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[1],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[0],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      images[1],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          images[2],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                      if (images.length > 3)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '+${images.length - 3}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildImageGrid(List<File> images) {
@@ -318,64 +605,59 @@ class ListingItemPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSizeSection(ListItemController controller) {
-    if (controller.sizeController.text.isEmpty) return const SizedBox.shrink();
+  Widget _buildCategoriesSection(ListItemController controller) {
+    return Obx(() {
+      if (controller.selectedCategories.isEmpty) {
+        return const SizedBox.shrink();
+      }
 
-    // Parse the size value from controller - assuming it contains selected sizes
-    String sizeText = controller.sizeController.text;
-    List<String> availableSizes = ['S', 'M', 'L', 'XL'];
-    List<String> selectedSizes =
-        sizeText.split(',').map((s) => s.trim()).toList();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Size :',
-          style: Appthemes.textMedium.copyWith(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Categories:',
+            style: Appthemes.textMedium.copyWith(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Row(
-          children:
-              availableSizes.map((size) {
-                bool isSelected =
-                    selectedSizes.contains(size) ||
-                    (selectedSizes.length == 1 && selectedSizes.first == size);
-                return Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? appColors.pYellow : Colors.white,
-                    border: Border.all(
-                      color:
-                          isSelected ? appColors.pYellow : Colors.grey.shade300,
-                      width: 1,
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children:
+                controller.selectedCategories.map((category) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    size,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white : Colors.black,
+                    decoration: BoxDecoration(
+                      color: appColors.pYellow.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: appColors.pYellow, width: 1),
                     ),
-                  ),
-                );
-              }).toList(),
-        ),
-      ],
-    );
+                    child: Text(
+                      category,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
+                        color: appColors.pYellow,
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildLocationSection(ListItemController controller) {
+    if (controller.locationController.text.isEmpty)
+      return const SizedBox.shrink();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -396,161 +678,63 @@ class ListingItemPreviewScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            controller.locationController.text.isNotEmpty
-                ? controller.locationController.text
-                : 'No location specified',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w400,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentMethodsSection(ListItemController controller) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Select Payment method',
-            style: Appthemes.textMedium.copyWith(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Obx(
-            () => Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPaymentRadioOption(
-                        'Paypal',
-                        controller.selectedPaymentMethod.value == 'Paypal',
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: _buildPaymentRadioOption(
-                        'Credit Card',
-                        controller.selectedPaymentMethod.value == 'Credit Card',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPaymentRadioOption(
-                        'Cash',
-                        controller.selectedPaymentMethod.value == 'Cash',
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: _buildPaymentRadioOption(
-                        'VENMO',
-                        controller.selectedPaymentMethod.value == 'VENMO',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentRadioOption(String label, bool isSelected) {
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isSelected ? appColors.pYellow : Colors.transparent,
-            border: Border.all(
-              color: isSelected ? appColors.pYellow : Colors.grey.shade400,
-              width: 2,
-            ),
-          ),
-          child:
-              isSelected
-                  ? Icon(Icons.check, color: Colors.white, size: 14)
-                  : null,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOtherPaymentSection(ListItemController controller) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Other Payment method',
-            style: Appthemes.textMedium.copyWith(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.transparent,
-                  border: Border.all(color: Colors.grey.shade400, width: 2),
+              Icon(Icons.location_on, color: appColors.pYellow, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  controller.locationController.text,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                controller.otherPaymentController.text.isNotEmpty
-                    ? controller.otherPaymentController.text
-                    : 'No other payment method specified',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShippingSection(ListItemController controller) {
+    if (controller.shippingController.text.isEmpty)
+      return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Shipping Info / Pickup',
+            style: Appthemes.textMedium.copyWith(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.local_shipping, color: appColors.pYellow, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  controller.shippingController.text,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ],
@@ -573,7 +757,7 @@ class ListingItemPreviewScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Preferred Method of Contact',
+            'Contact Information',
             style: Appthemes.textMedium.copyWith(
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
@@ -581,83 +765,271 @@ class ListingItemPreviewScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Obx(
-            () => Column(
-              children: [
-                // Email - Always show if available
-                if (controller.emailController.text.isNotEmpty)
-                  _buildContactRow('Email :', controller.emailController.text),
+          Column(
+            children: [
+              // Email
+              if (controller.emailController.text.isNotEmpty)
+                _buildContactRow(
+                  Icons.email_outlined,
+                  'Email:',
+                  controller.emailController.text,
+                ),
 
-                // PayPal email if different from main email
-                if (controller.paypalController.text.isNotEmpty &&
-                    controller.paypalController.text !=
-                        controller.emailController.text) ...[
-                  const SizedBox(height: 8),
-                  _buildContactRow(
-                    'PayPal :',
-                    controller.paypalController.text,
-                  ),
-                ],
-
-                // Show selected contact method
-                if (controller.selectedContactMethod.value.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildContactRow(
-                    'Preferred Contact :',
-                    controller.selectedContactMethod.value,
-                  ),
-                ],
-
-                // Shipping info
-                if (controller.shippingController.text.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildContactRow(
-                    'Shipping info / Pickup :',
-                    controller.shippingController.text,
-                  ),
-                ],
-
-                // If no contact info is available, show a message
-                if (controller.emailController.text.isEmpty &&
-                    controller.paypalController.text.isEmpty &&
-                    controller.selectedContactMethod.value.isEmpty &&
-                    controller.shippingController.text.isEmpty)
-                  _buildContactRow(
-                    'Contact :',
-                    'No contact information provided',
-                  ),
+              // Phone Number
+              if (controller.phoneController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildContactRow(
+                  Icons.phone,
+                  'Phone:',
+                  controller.phoneController.text,
+                ),
               ],
-            ),
+
+              // Facebook
+              if (controller.facebookController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildContactRow(
+                  Icons.face,
+                  'Facebook:',
+                  controller.facebookController.text,
+                ),
+              ],
+
+              // Preferred Contact Method
+              Obx(() {
+                if (controller.selectedContactMethod.value.isNotEmpty) {
+                  return Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _buildContactRow(
+                        Icons.contact_support,
+                        'Preferred Contact:',
+                        controller.selectedContactMethod.value,
+                      ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContactRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+  Widget _buildContactRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: appColors.pYellow, size: 18),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: Appthemes.textSmall.copyWith(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: Appthemes.textSmall.copyWith(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w400,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentMethodsSection(ListItemController controller) {
+    return Obx(() {
+      if (controller.selectedPaymentMethod.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment Methods',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12.0,
+              runSpacing: 8.0,
+              children:
+                  controller.selectedPaymentMethod.map((method) {
+                    IconData icon;
+                    switch (method.toLowerCase()) {
+                      case 'paypal':
+                        icon = Icons.payment;
+                        break;
+                      case 'cash':
+                        icon = Icons.attach_money;
+                        break;
+                      case 'venmo':
+                        icon = Icons.account_balance_wallet;
+                        break;
+                      case 'cashapp':
+                        icon = Icons.account_balance_wallet;
+                        break;
+                      case 'credit card':
+                        icon = Icons.credit_card;
+                        break;
+                      default:
+                        icon = Icons.payment;
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: appColors.pYellow.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: appColors.pYellow, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, color: appColors.pYellow, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            method,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                              color: appColors.pYellow,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+            ),
+
+            // Show payment account details if available
+            const SizedBox(height: 12),
+
+            // PayPal Account
+            if (controller.selectedPaymentMethod.contains('Paypal') &&
+                controller.paypalController.text.isNotEmpty) ...[
+              _buildPaymentAccountRow(
+                'PayPal Account:',
+                controller.paypalController.text,
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // Venmo Account
+            if (controller.selectedPaymentMethod.contains('VENMO') &&
+                controller.venmoAccountController.text.isNotEmpty) ...[
+              _buildPaymentAccountRow(
+                'Venmo Account:',
+                controller.venmoAccountController.text,
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // CashApp Account
+            if (controller.selectedPaymentMethod.contains('CashApp') &&
+                controller.cashappAccountController.text.isNotEmpty) ...[
+              _buildPaymentAccountRow(
+                'CashApp Account:',
+                controller.cashappAccountController.text,
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildPaymentAccountRow(String label, String value) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w400,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtherPaymentSection(ListItemController controller) {
+    if (controller.otherPaymentController.text.isEmpty)
+      return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label,
-            style: Appthemes.textSmall.copyWith(
-              fontSize: 14.sp,
+            'Other Payment Options',
+            style: Appthemes.textMedium.copyWith(
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: Appthemes.textSmall.copyWith(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w400,
-                color: Colors.black87,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.more_horiz, color: appColors.pYellow, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  controller.otherPaymentController.text,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -673,8 +1045,8 @@ class ListingItemPreviewScreen extends StatelessWidget {
           height: 56,
           child: CustomElevatedButton(
             text: 'Edit Listing',
-            backgroundColor: appColors.pYellow,
-            textColor: Colors.white,
+            backgroundColor: Colors.white,
+            textColor: appColors.pYellow,
             fontSize: 18.sp,
             fontWeight: FontWeight.w600,
             borderRadius: 28.r,
@@ -690,7 +1062,10 @@ class ListingItemPreviewScreen extends StatelessWidget {
           height: 56,
           child: Obx(
             () => CustomElevatedButton(
-              text: 'Publish Listing',
+              text:
+                  controller.isEditMode.value
+                      ? 'Update Listing'
+                      : ' Publish Listing',
               backgroundColor: appColors.pYellow,
               textColor: Colors.white,
               fontSize: 18.sp,

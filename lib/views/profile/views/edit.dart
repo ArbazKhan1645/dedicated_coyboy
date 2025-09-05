@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use, library_private_types_in_public_api
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/profile/controllers/profile_controller.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:flutter/material.dart';
@@ -128,7 +127,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
                                 color: Colors.white,
                                 child: const Center(
                                   child: CircularProgressIndicator(
-                                    color: Color(0xFFF3B340),
+                                    color: Color(0xFFF2B342),
                                     strokeWidth: 2,
                                   ),
                                 ),
@@ -142,7 +141,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
                                       color: Colors.white,
                                       child: const Center(
                                         child: CircularProgressIndicator(
-                                          color: Color(0xFFF3B340),
+                                          color: Color(0xFFF2B342),
                                           strokeWidth: 2,
                                         ),
                                       ),
@@ -162,7 +161,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: Color(0xFFF3B340),
+                        color: Color(0xFFF2B342),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
@@ -219,13 +218,13 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
 
   Widget _buildAvatarFallback() {
     return Container(
-      color: Color(0xFFF3B340).withOpacity(0.2),
+      color: Color(0xFFF2B342).withOpacity(0.2),
       child: Center(
         child: Obx(
           () => Text(
             controller.currentUser.value?.initials ?? 'U',
             style: TextStyle(
-              color: Color(0xFFF3B340),
+              color: Color(0xFFF2B342),
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
@@ -431,7 +430,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFF3B340), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFF2B342), width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -478,7 +477,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFF3B340), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFF2B342), width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -532,7 +531,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFF3B340), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFF2B342), width: 2),
             ),
             suffixIcon: IconButton(
               icon: Icon(
@@ -649,7 +648,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
     return Obx(
       () => CustomElevatedButton(
         text: 'Save Changes',
-        backgroundColor: Color(0xFFF3B340),
+        backgroundColor: Color(0xFFF2B342),
         textColor: Colors.white,
         fontSize: 18.sp,
         fontWeight: FontWeight.w900,

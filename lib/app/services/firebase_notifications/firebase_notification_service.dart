@@ -180,35 +180,51 @@ class FirebaseNotificationService {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Get device ID
-      String deviceId = '';
       final deviceInfo = DeviceInfoPlugin();
+      String deviceId = '';
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        deviceId =
-            androidInfo.id; // or androidInfo.androidId for older API levels
+        deviceId = androidInfo.id;
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
         deviceId = iosInfo.identifierForVendor ?? '';
       }
 
-      // Only update FCM-related fields
+      // 🔍 Step 1: Check if token already exists for another user
+      final existing =
+          await _firestore
+              .collection(usersCollection)
+              .where('fcmToken', isEqualTo: token)
+              .get();
+
+      for (var doc in existing.docs) {
+        if (doc.id != userId) {
+          // Remove token from that user
+          await _firestore.collection(usersCollection).doc(doc.id).update({
+            'fcmToken': FieldValue.delete(),
+            'deviceId': FieldValue.delete(),
+            'deviceType': FieldValue.delete(),
+          });
+        }
+      }
+
+      // 🔄 Step 2: Save token for current user
       await _firestore.collection(usersCollection).doc(userId).set({
         'fcmToken': token,
         'deviceId': deviceId,
         'deviceType': Platform.isAndroid ? 'android' : 'ios',
-        'lastSeen': DateTime.now().toString(),
+        'lastSeen': DateTime.now().toIso8601String(),
         'isOnline': true,
-        'updatedAt': DateTime.now().toString(),
+        'updatedAt': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
 
       // Cache token locally
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('fcm_token', token);
 
-      print('FCM token updated successfully');
+      print('✅ FCM token updated successfully');
     } catch (e) {
-      print('Error saving FCM token: $e');
+      print('❌ Error saving FCM token: $e');
     }
   }
 

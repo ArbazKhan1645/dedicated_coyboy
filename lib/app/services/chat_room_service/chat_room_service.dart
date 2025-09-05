@@ -1,16 +1,28 @@
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
+import 'package:dedicated_cowboy/main.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 import 'dart:async';
 
 class ChatService extends GetxService {
   Future<ChatService> init() async {
+    await oninit();
     return this;
+  }
+
+  oninit() async {
+    Stripe.publishableKey =
+        'pk_live_51Ovk7x01qJUl13qF1ESWAKLlq9V4dPGQyQtXg2j1XYJHQJ7SBdzPjWEFozDkzvAzzWT3Hl3oJ6f82VT5Q2SavYAQ00zmffzDSr';
+    Stripe.merchantIdentifier = 'merchant.flutter.stripe.live';
+    Stripe.urlScheme = 'flutterstripe';
+    await Stripe.instance.applySettings();
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -109,8 +121,6 @@ class ChatService extends GetxService {
     });
   }
 
-  // Get chat rooms for user
-
   // Get messages for chat room
   Stream<List<Message>> getMessages(String chatRoomId) {
     return _firestore
@@ -156,13 +166,14 @@ class ChatService extends GetxService {
     }
   }
 
-  // Send text message
+  // Send text message with reply support
   Future<void> sendMessage({
     required String chatRoomId,
     required String senderId,
     required String receiverId,
     required String content,
     MessageType type = MessageType.text,
+    Message? replyTo,
   }) async {
     try {
       final messageId = _uuid.v4();
@@ -174,6 +185,7 @@ class ChatService extends GetxService {
         type: type,
         timestamp: DateTime.now(),
         status: MessageStatus.sent,
+        replyTo: replyTo,
       );
 
       // Add message to collection
@@ -207,10 +219,9 @@ class ChatService extends GetxService {
       final messageId = _uuid.v4();
 
       // Upload image to Firebase Storage
-      final ref = _storage.ref().child('chat_images').child('$messageId.jpg');
-      final uploadTask = ref.putFile(imageFile);
-      final snapshot = await uploadTask;
-      final imageUrl = await snapshot.ref.getDownloadURL();
+      final imageUrl = await uploadMedia([imageFile]);
+
+      print('Image URL: $imageUrl');
 
       // Create message
       final message = Message(
@@ -270,6 +281,49 @@ class ChatService extends GetxService {
       }
     } catch (e) {
       throw Exception('Failed to pick and send image: $e');
+    }
+  }
+
+  // Delete message for specific user (hide from their view)
+  Future<void> deleteMessageForUser({
+    required String chatRoomId,
+    required String messageId,
+    required String userId,
+  }) async {
+    try {
+      final messageRef = _firestore
+          .collection('chatRooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .doc(messageId);
+
+      await messageRef.update({
+        'deletedFor': FieldValue.arrayUnion([userId]),
+      });
+    } catch (e) {
+      throw Exception('Failed to delete message for user: $e');
+    }
+  }
+
+  // Delete message for everyone (WhatsApp style)
+  Future<void> deleteMessageForEveryone({
+    required String chatRoomId,
+    required String messageId,
+  }) async {
+    try {
+      final messageRef = _firestore
+          .collection('chatRooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .doc(messageId);
+
+      await messageRef.update({
+        'deletedBy': messageId, // Use messageId as deletedBy identifier
+        'content': 'This message was deleted',
+        'deletedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to delete message for everyone: $e');
     }
   }
 

@@ -11,7 +11,7 @@ class FavoritesService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Collection reference for favorites
-  CollectionReference get _favoritesCollection => 
+  CollectionReference get _favoritesCollection =>
       _firestore.collection('favorites');
 
   // Get current user ID
@@ -23,7 +23,7 @@ class FavoritesService {
     required String listingType, // 'Item', 'Business', 'Event'
     required String listingName,
     required String? listingImage,
-    required String? category,
+    required List<String>? category,
     required double? price, // For items only
     required String ownerId,
   }) async {
@@ -50,10 +50,10 @@ class FavoritesService {
       };
 
       await favoriteDoc.set(favoriteData);
-      
+
       // Update favorites count in user's main document
       await _updateFavoritesCount(1);
-      
+
       debugPrint('Added to favorites: $listingName');
       return true;
     } catch (e) {
@@ -77,7 +77,7 @@ class FavoritesService {
 
       // Update favorites count in user's main document
       await _updateFavoritesCount(-1);
-      
+
       debugPrint('Removed from favorites: $listingId');
       return true;
     } catch (e) {
@@ -91,11 +91,12 @@ class FavoritesService {
     try {
       if (_currentUserId == null) return false;
 
-      final doc = await _favoritesCollection
-          .doc(_currentUserId)
-          .collection('userFavorites')
-          .doc(listingId)
-          .get();
+      final doc =
+          await _favoritesCollection
+              .doc(_currentUserId)
+              .collection('userFavorites')
+              .doc(listingId)
+              .get();
 
       return doc.exists;
     } catch (e) {
@@ -110,13 +111,13 @@ class FavoritesService {
     required String listingType,
     required String listingName,
     required String? listingImage,
-    required String? category,
+    required List<String>? category,
     required double? price,
     required String ownerId,
   }) async {
     try {
       final isCurrentlyFavorite = await isFavorite(listingId);
-      
+
       if (isCurrentlyFavorite) {
         await removeFromFavorites(listingId);
         return false; // No longer favorite
@@ -150,11 +151,11 @@ class FavoritesService {
         .orderBy('addedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return FavoriteItem.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return FavoriteItem.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Get favorites by type
@@ -170,11 +171,11 @@ class FavoritesService {
         .orderBy('addedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return FavoriteItem.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return FavoriteItem.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Get favorites by category
@@ -190,11 +191,11 @@ class FavoritesService {
         .orderBy('addedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return FavoriteItem.fromMap(data);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return FavoriteItem.fromMap(data);
+          }).toList();
+        });
   }
 
   /// Get favorites count for current user
@@ -202,11 +203,12 @@ class FavoritesService {
     try {
       if (_currentUserId == null) return 0;
 
-      final snapshot = await _favoritesCollection
-          .doc(_currentUserId)
-          .collection('userFavorites')
-          .count()
-          .get();
+      final snapshot =
+          await _favoritesCollection
+              .doc(_currentUserId)
+              .collection('userFavorites')
+              .count()
+              .get();
 
       return snapshot.count ?? 0;
     } catch (e) {
@@ -223,20 +225,21 @@ class FavoritesService {
       }
 
       final batch = _firestore.batch();
-      final snapshot = await _favoritesCollection
-          .doc(_currentUserId)
-          .collection('userFavorites')
-          .get();
+      final snapshot =
+          await _favoritesCollection
+              .doc(_currentUserId)
+              .collection('userFavorites')
+              .get();
 
       for (final doc in snapshot.docs) {
         batch.delete(doc.reference);
       }
 
       await batch.commit();
-      
+
       // Reset favorites count
       await _resetFavoritesCount();
-      
+
       debugPrint('Cleared all favorites');
       return true;
     } catch (e) {
@@ -250,10 +253,7 @@ class FavoritesService {
     try {
       if (_currentUserId == null) return;
 
-      await _firestore
-          .collection('users')
-          .doc(_currentUserId)
-          .update({
+      await _firestore.collection('users').doc(_currentUserId).update({
         'favoritesCount': FieldValue.increment(increment),
       });
     } catch (e) {
@@ -266,10 +266,7 @@ class FavoritesService {
     try {
       if (_currentUserId == null) return;
 
-      await _firestore
-          .collection('users')
-          .doc(_currentUserId)
-          .update({
+      await _firestore.collection('users').doc(_currentUserId).update({
         'favoritesCount': 0,
       });
     } catch (e) {
@@ -281,12 +278,12 @@ class FavoritesService {
   Future<List<String>> getUsersWhoFavorited(String listingId) async {
     try {
       final userIds = <String>[];
-      
+
       // This would require a different collection structure for efficiency
       // For now, we'll keep it simple and not implement this
       // In production, you might want to maintain a separate collection
       // for listing favorites with user IDs as an array
-      
+
       return userIds;
     } catch (e) {
       debugPrint('Error getting users who favorited: $e');
@@ -306,25 +303,26 @@ class FavoritesService {
         .orderBy('addedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      final allFavorites = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return FavoriteItem.fromMap(data);
-      }).toList();
+          final allFavorites =
+              snapshot.docs.map((doc) {
+                final data = doc.data();
+                return FavoriteItem.fromMap(data);
+              }).toList();
 
-      // Filter by search query
-      if (query.isEmpty) return allFavorites;
-      
-      final lowercaseQuery = query.toLowerCase();
-      return allFavorites.where((favorite) {
-        final name = favorite.listingName.toLowerCase();
-        final category = favorite.category?.toLowerCase() ?? '';
-        final type = favorite.listingType.toLowerCase();
-        
-        return name.contains(lowercaseQuery) || 
-               category.contains(lowercaseQuery) ||
-               type.contains(lowercaseQuery);
-      }).toList();
-    });
+          // Filter by search query
+          if (query.isEmpty) return allFavorites;
+
+          final lowercaseQuery = query.toLowerCase();
+          return allFavorites.where((favorite) {
+            final name = favorite.listingName.toLowerCase();
+            final type = favorite.listingType.toLowerCase();
+            final categories = favorite.category ?? []; // List<String>
+
+            return name.contains(lowercaseQuery) ||
+                type.contains(lowercaseQuery) ||
+                categories.any((c) => c.toLowerCase().contains(lowercaseQuery));
+          }).toList();
+        });
   }
 }
 
@@ -334,7 +332,7 @@ class FavoriteItem {
   final String listingType;
   final String listingName;
   final String? listingImage;
-  final String? category;
+  final List<String>? category;
   final double? price;
   final String ownerId;
   final DateTime? addedAt;
@@ -358,12 +356,14 @@ class FavoriteItem {
       listingType: map['listingType'] ?? '',
       listingName: map['listingName'] ?? '',
       listingImage: map['listingImage'],
-      category: map['category'],
+      category:
+          map['category'] != null ? List<String>.from(map['category']) : null,
       price: map['price']?.toDouble(),
       ownerId: map['ownerId'] ?? '',
-      addedAt: map['addedAt'] != null 
-          ? (map['addedAt'] as Timestamp).toDate()
-          : null,
+      addedAt:
+          map['addedAt'] != null
+              ? (map['addedAt'] as Timestamp).toDate()
+              : null,
       userId: map['userId'] ?? '',
     );
   }

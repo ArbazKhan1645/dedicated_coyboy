@@ -340,21 +340,7 @@ class _SignUpViewState extends State<SignUpView> {
                         ),
                         const SizedBox(height: 30),
 
-                        // Forgot Password Link
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: controller.showForgotPasswordDialog,
-                            child: Text(
-                              'Forgot Password?',
-                              style: Appthemes.textSmall.copyWith(
-                                color: appColors.pYellow,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                     
 
                         // JOIN Button
                         Obx(

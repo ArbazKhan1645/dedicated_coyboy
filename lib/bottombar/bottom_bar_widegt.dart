@@ -1,4 +1,6 @@
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
@@ -132,6 +134,8 @@ class NavController extends GetxController {
       FirebaseNotificationService();
   Future<void> _initializeNotificationService() async {
     try {
+      await NotificationService().initialize();
+      await SubscriptionService().initializeSubscriptionPlans();
       await _notificationService.initialize();
     } catch (e) {
       print('Error initializing notification service: $e');

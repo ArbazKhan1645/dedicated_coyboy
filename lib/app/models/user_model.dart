@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class UserModel {
@@ -22,14 +23,14 @@ class UserModel {
   final String? deviceType;
   final DateTime? lastSeen;
   final bool? isOnline;
-  
+
   // Business Information
   final String? businessName;
   final String? businessLink;
   final String? businessAddress;
   final String? professionalStatus;
   final String? industry;
-  
+
   // Social Profiles
   final String? facebookUrl;
   final String? twitterUrl;
@@ -82,7 +83,7 @@ class UserModel {
       deviceId: '',
       fcmToken: '',
       deviceType: '',
-      lastSeen: DateTime.now(),
+      // lastSeen: DateTime.now(),
       isOnline: false,
       avatar: '',
     );
@@ -138,13 +139,13 @@ class UserModel {
       address: json['address'],
       about: json['about'],
       emailVerified: json['emailVerified'] ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-      lastLoginAt: json['lastLoginAt'] != null ? DateTime.parse(json['lastLoginAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
+      lastLoginAt: _parseDateTime(json['lastLoginAt']),
+      updatedAt: _parseDateTime(json['updatedAt']) ?? DateTime.now(),
       deviceId: json['deviceId'] ?? '',
       fcmToken: json['fcmToken'],
       deviceType: json['deviceType'],
-      // lastSeen: json['lastSeen'] != null ? DateTime.parse(json['lastSeen']) : null,
+      // lastSeen: _parseDateTime(json['lastSeen']),
       isOnline: json['isOnline'] ?? false,
       businessName: json['businessName'],
       businessLink: json['businessLink'],
@@ -156,6 +157,23 @@ class UserModel {
       linkedinUrl: json['linkedinUrl'],
       youtubeUrl: json['youtubeUrl'],
     );
+  }
+
+  // Helper method to handle both Timestamp and String date parsing
+  static DateTime? _parseDateTime(dynamic dateValue) {
+    if (dateValue == null) return null;
+
+    if (dateValue is Timestamp) {
+      return dateValue.toDate();
+    } else if (dateValue is String) {
+      try {
+        return DateTime.parse(dateValue);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   UserModel copyWith({
@@ -242,16 +260,23 @@ class UserModel {
   }
 
   String get initials {
-    if (firstName?.isNotEmpty == true && lastName?.isNotEmpty == true) {
+    if ((firstName?.isNotEmpty ?? false) && (lastName?.isNotEmpty ?? false)) {
       return '${firstName![0]}${lastName![0]}'.toUpperCase();
-    } else if (displayName?.isNotEmpty == true) {
-      final parts = displayName!.split(' ');
-      if (parts.length >= 2) {
+    } else if (displayName?.isNotEmpty ?? false) {
+      final parts = displayName!.trim().split(
+        RegExp(r'\s+'),
+      ); // split by spaces safely
+      if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
         return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
+        return parts[0][0].toUpperCase();
       }
-      return displayName![0].toUpperCase();
     }
-    return email[0].toUpperCase();
+    if (email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    print(email);
+    return "?"; // fallback to avoid RangeError
   }
 
   @override

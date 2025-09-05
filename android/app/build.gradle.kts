@@ -27,6 +27,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
+        multiDexEnabled = true
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -36,12 +37,17 @@ android {
     }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    release {
+        // TODO: Add your own signing config for the release build.
+        signingConfig = signingConfigs.getByName("debug")
+        isMinifyEnabled = true // optional, if you want shrinking/obfuscation
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro"
+        )
     }
+}
+
 }
 
 flutter {
@@ -52,6 +58,8 @@ flutter {
 dependencies {
   implementation("com.google.android.gms:play-services-auth:20.7.0")
   implementation("com.google.android.gms:play-services-base:18.3.0")
+  implementation("com.stripe:stripe-android:17.1.1")
+  implementation("com.facebook.android:facebook-android-sdk:latest.release")
 
   implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
 

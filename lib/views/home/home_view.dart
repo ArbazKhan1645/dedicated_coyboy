@@ -1,15 +1,18 @@
 import 'package:dedicated_cowboy/app/models/modules_models/business_model.dart';
 import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/consts/appColors.dart';
 import 'package:dedicated_cowboy/consts/appthemes.dart';
 import 'package:dedicated_cowboy/views/browser/browser.dart';
 import 'package:dedicated_cowboy/views/home/controller/home_controller.dart';
 import 'package:dedicated_cowboy/views/home/widgets/banner_widget.dart';
 import 'package:dedicated_cowboy/views/home/widgets/feature_widget.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
 import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
 import 'package:dedicated_cowboy/views/subscriptions.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:dedicated_cowboy/widgets/search_bar_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -17,12 +20,13 @@ import 'package:get/get.dart';
 class HomeView extends StatelessWidget {
   HomeView({super.key});
 
-  final HomeController controller = Get.find<HomeController>();
+  final HomeController controller = Get.put(HomeController());
 
   void _openProductDetail(BuildContext context, dynamic product) {
+    FocusScope.of(context).unfocus();
     Widget page;
     if (product is ItemListing) {
-      page = ProductDetailScreen(product: product);
+      page = ItemProductDetailScreen(product: product);
     } else if (product is BusinessListing) {
       page = BusinessDetailScreen(business: product);
     } else {
@@ -36,8 +40,8 @@ class HomeView extends StatelessWidget {
       onTap: () {
         Get.to(
           () => ProductListingScreen(
-            initialCategory: category.title,
-            categories: ['All', ...controller.categories.map((c) => c.title)],
+            initialCategory: ['All', ...categoriesStatic[category.title] ?? []],
+            categories: ['All', ...categoriesStatic[category.title] ?? []],
             onProductTap: (product) => _openProductDetail(context, product),
           ),
         );
@@ -91,13 +95,14 @@ class HomeView extends StatelessWidget {
             children: [
               SearchBarWidget(
                 controller: controller.searchController,
-                onSearchTap: () {
-                  Get.to(
+                onSearchTap: () async {
+                  FocusScope.of(context).unfocus();
+                  await Get.to(
                     () => ProductListingScreen(
                       appliedFilters: {
-                        'searchQuery': controller.searchController.text,
+                        'searchQuery': controller.searchController.text.trim(),
                       },
-                      initialCategory: 'All',
+                      initialCategory: ['All'],
                       categories: [
                         'All',
                         ...controller.categories.map((c) => c.title),
@@ -108,15 +113,17 @@ class HomeView extends StatelessWidget {
                   );
                   controller.searchController.clear();
                 },
-                onSubmitted: () {
-                  Get.to(
+                onSubmitted: () async {
+                  FocusScope.of(context).unfocus();
+                  await Get.to(
                     () => ProductListingScreen(
                       appliedFilters: {
                         'searchQuery': controller.searchController.text,
                       },
-                      initialCategory: 'All',
+                      initialCategory: ['All'],
                       categories: [
                         'All',
+
                         ...controller.categories.map((c) => c.title),
                       ],
                       onProductTap:
@@ -184,7 +191,11 @@ class HomeView extends StatelessWidget {
                     backgroundColor: appColors.pYellow,
                     isLoading: false,
                     onTap: () {
-                      Get.to(() => SubscriptionManagementScreen());
+                      Get.to(
+                        () => SubscriptionManagementScreen(
+                          userId: FirebaseAuth.instance.currentUser!.uid,
+                        ),
+                      );
                     },
                   ),
                 ),

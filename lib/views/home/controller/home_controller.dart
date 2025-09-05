@@ -21,7 +21,7 @@ class HomeController extends GetxController {
       imageUrl: 'assets/images/Rectangle 3463809 (3).png',
     ),
     Category(
-      title: 'Businesses & Services',
+      title: 'Business & Services',
       imageUrl: "assets/images/Rectangle 3463809 (4).png",
     ),
   ];

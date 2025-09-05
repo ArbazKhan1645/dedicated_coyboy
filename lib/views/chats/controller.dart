@@ -17,10 +17,13 @@ class ChatController extends GetxController {
   final Rx<UserModel?> otherUser = Rx<UserModel?>(null);
   final RxBool isLoading = false.obs;
   final RxBool isTyping = false.obs;
+  final RxBool showEmojiPicker = false.obs;
+  final Rx<Message?> replyingTo = Rx<Message?>(null);
 
   // Controllers
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
+  final FocusNode messageFocusNode = FocusNode();
 
   // Variables
   late String chatRoomId;
@@ -39,6 +42,13 @@ class ChatController extends GetxController {
     chatRoomId = args['chatRoomId'];
 
     _initializeChat();
+
+    // Listen to focus changes to hide emoji picker
+    messageFocusNode.addListener(() {
+      if (messageFocusNode.hasFocus) {
+        showEmojiPicker.value = false;
+      }
+    });
   }
 
   @override
@@ -47,6 +57,7 @@ class ChatController extends GetxController {
     _typingTimer?.cancel();
     messageController.dispose();
     scrollController.dispose();
+    messageFocusNode.dispose();
     super.onClose();
   }
 
@@ -83,11 +94,21 @@ class ChatController extends GetxController {
   List<Message> get combinedMessages {
     final List<Message> combined = [];
 
-    // Add optimistic messages first
-    combined.addAll(optimisticMessages.where((msg) => msg.isOptimistic));
+    // Add optimistic messages first (only those that are still sending)
+    combined.addAll(
+      optimisticMessages.where(
+        (msg) => msg.isOptimistic && msg.status == MessageStatus.sending,
+      ),
+    );
 
-    // Add real messages, filtering out any that match optimistic ones
+    // Add real messages, filtering out deleted messages for current user
     for (final message in messages) {
+      // Skip deleted messages that are deleted for current user
+      if (message.deletedFor?.contains(currentUserId) == true) {
+        continue;
+      }
+
+      // Check if there's a matching optimistic message
       final hasOptimistic = optimisticMessages.any(
         (opt) =>
             opt.content == message.content &&
@@ -109,12 +130,16 @@ class ChatController extends GetxController {
     final content = messageController.text.trim();
     if (content.isEmpty) return;
 
-    // Clear input immediately
-    messageController.clear();
+    final replyToMessage = replyingTo.value;
 
-    // Create optimistic message
+    // Clear input and reply immediately
+    messageController.clear();
+    clearReply();
+
+    // Create optimistic message with unique ID to prevent duplicates
+    final optimisticId = '${const Uuid().v4()}_optimistic';
     final optimisticMessage = Message(
-      id: const Uuid().v4(),
+      id: optimisticId,
       senderId: currentUserId,
       receiverId: otherUserId,
       content: content,
@@ -122,6 +147,7 @@ class ChatController extends GetxController {
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
       isOptimistic: true,
+      replyTo: replyToMessage,
     );
 
     // Add to optimistic messages
@@ -135,22 +161,12 @@ class ChatController extends GetxController {
         senderId: currentUserId,
         receiverId: otherUserId,
         content: content,
+        replyTo: replyToMessage,
       );
 
-      // Update optimistic message status
-      final index = optimisticMessages.indexWhere(
-        (msg) => msg.id == optimisticMessage.id,
-      );
-      if (index != -1) {
-        optimisticMessages[index] = optimisticMessage.copyWith(
-          status: MessageStatus.sent,
-        );
-      }
+      // Remove optimistic message immediately after sending
+      optimisticMessages.removeWhere((msg) => msg.id == optimisticId);
 
-      // Remove optimistic message after a delay (real message will replace it)
-      Timer(const Duration(seconds: 2), () {
-        optimisticMessages.removeWhere((msg) => msg.id == optimisticMessage.id);
-      });
       try {
         FirebaseNotificationService notificationService =
             FirebaseNotificationService();
@@ -158,22 +174,19 @@ class ChatController extends GetxController {
         if (currentUser != null) {
           await notificationService.sendNotificationToUser(
             receiverId: otherUserId,
-            title:
-                currentUser.displayName ??
-                'Someone'
-                    'has sent you a message',
+            title: '${currentUser.displayName ?? 'Someone'} sent you a message',
             body: content,
             type: 'chat',
             data: {'chatRoomId': chatRoomId, 'messageType': 'message'},
           );
         }
       } on Exception catch (e) {
-        print('failed to send the notification to the user');
+        print('Failed to send notification: $e');
       }
     } catch (e) {
       // Update optimistic message to failed status
       final index = optimisticMessages.indexWhere(
-        (msg) => msg.id == optimisticMessage.id,
+        (msg) => msg.id == optimisticId,
       );
       if (index != -1) {
         optimisticMessages[index] = optimisticMessage.copyWith(
@@ -201,7 +214,7 @@ class ChatController extends GetxController {
         'Success',
         'Chat cleared successfully',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.8),
+        backgroundColor: Color(0xFFF2B342).withOpacity(0.8),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -221,9 +234,10 @@ class ChatController extends GetxController {
   }
 
   void sendImageMessage() async {
-    // Create optimistic image message
+    // Create optimistic image message with unique ID
+    final optimisticId = '${const Uuid().v4()}_image_optimistic';
     final optimisticMessage = Message(
-      id: const Uuid().v4(),
+      id: optimisticId,
       senderId: currentUserId,
       receiverId: otherUserId,
       content: 'Sending image...',
@@ -243,20 +257,21 @@ class ChatController extends GetxController {
         receiverId: otherUserId,
       );
 
-      // Remove optimistic message
-      optimisticMessages.removeWhere((msg) => msg.id == optimisticMessage.id);
+      // Remove optimistic message immediately after sending
+      optimisticMessages.removeWhere((msg) => msg.id == optimisticId);
     } catch (e) {
       // Update optimistic message to failed
       final index = optimisticMessages.indexWhere(
-        (msg) => msg.id == optimisticMessage.id,
+        (msg) => msg.id == optimisticId,
       );
       if (index != -1) {
         optimisticMessages[index] = optimisticMessage.copyWith(
           status: MessageStatus.failed,
         );
       }
+      print(e.toString());
 
-      Get.snackbar('Error', 'Failed to send image');
+      Get.snackbar('Error', 'Failed to send image $e');
     }
   }
 
@@ -298,6 +313,7 @@ class ChatController extends GetxController {
           senderId: currentUserId,
           receiverId: otherUserId,
           content: message.content,
+          replyTo: message.replyTo,
         );
 
         // Remove optimistic message
@@ -314,5 +330,94 @@ class ChatController extends GetxController {
         }
       }
     }
+  }
+
+  // Reply functionality
+  void setReplyMessage(Message message) {
+    replyingTo.value = message;
+    messageFocusNode.requestFocus();
+    showEmojiPicker.value = false;
+  }
+
+  void clearReply() {
+    replyingTo.value = null;
+  }
+
+  // Delete functionality
+  void deleteMessageForMe(Message message) async {
+    try {
+      await _chatService.deleteMessageForUser(
+        chatRoomId: chatRoomId,
+        messageId: message.id,
+        userId: currentUserId,
+      );
+
+      Get.snackbar('Success', 'Message deleted');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete message');
+    }
+  }
+
+  void deleteMessageForEveryone(Message message) async {
+    try {
+      await _chatService.deleteMessageForEveryone(
+        chatRoomId: chatRoomId,
+        messageId: message.id,
+      );
+
+      Get.snackbar('Success', 'Message deleted for everyone');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete message');
+    }
+  }
+
+  // Emoji functionality
+  void toggleEmojiPicker() {
+    showEmojiPicker.value = !showEmojiPicker.value;
+    if (showEmojiPicker.value) {
+      messageFocusNode.unfocus();
+    } else {
+      messageFocusNode.requestFocus();
+    }
+  }
+
+  void addEmoji(String emoji) {
+    final currentText = messageController.text;
+    final selection = messageController.selection;
+
+    if (selection.baseOffset == -1) {
+      messageController.text = currentText + emoji;
+      messageController.selection = TextSelection.fromPosition(
+        TextPosition(offset: messageController.text.length),
+      );
+    } else {
+      final newText = currentText.replaceRange(
+        selection.start,
+        selection.end,
+        emoji,
+      );
+      messageController.text = newText;
+      messageController.selection = TextSelection.fromPosition(
+        TextPosition(offset: selection.baseOffset + emoji.length),
+      );
+    }
+  }
+
+  void backspaceEmoji() {
+    final currentText = messageController.text;
+    final selection = messageController.selection;
+
+    if (currentText.isEmpty) return;
+
+    if (selection.baseOffset == -1 || selection.baseOffset == 0) return;
+
+    final newText =
+        currentText.substring(0, selection.baseOffset - 1) +
+        currentText.substring(selection.baseOffset);
+
+    messageController.text = newText;
+    messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: selection.baseOffset - 1),
+    );
   }
 }

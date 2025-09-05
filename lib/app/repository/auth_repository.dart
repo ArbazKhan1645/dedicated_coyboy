@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/utils/exceptions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,9 +17,9 @@ abstract class AuthRepository {
 
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
-  
-  FirebaseAuthRepository({FirebaseAuth? firebaseAuth}) 
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+
+  FirebaseAuthRepository({FirebaseAuth? firebaseAuth})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   @override
   Future<UserModel?> getCurrentUser() async {
@@ -38,20 +39,21 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel> signInWithEmailAndPassword(String email, String password) async {
+  Future<UserModel> signInWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     try {
-      final UserCredential result = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      
+      final UserCredential result = await _firebaseAuth
+          .signInWithEmailAndPassword(email: email.trim(), password: password);
+
       if (result.user == null) {
         throw const AuthException(
           message: 'Sign in failed. Please try again.',
           code: 'sign-in-failed',
         );
       }
-      
+
       return UserModel.fromFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthExceptions.fromFirebaseAuthException(e);
@@ -61,23 +63,27 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel> signUpWithEmailAndPassword(String email, String password) async {
+  Future<UserModel> signUpWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     try {
-      final UserCredential result = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      
+      final UserCredential result = await _firebaseAuth
+          .createUserWithEmailAndPassword(
+            email: email.trim(),
+            password: password,
+          );
+
       if (result.user == null) {
         throw const AuthException(
           message: 'Sign up failed. Please try again.',
           code: 'sign-up-failed',
         );
       }
-      
+
       // Send email verification automatically
       await result.user!.sendEmailVerification();
-      
+
       return UserModel.fromFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthExceptions.fromFirebaseAuthException(e);
@@ -153,6 +159,7 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       final User? user = _firebaseAuth.currentUser;
       if (user != null) {
+        
         await user.updateDisplayName(displayName);
         if (photoURL != null) {
           await user.updatePhotoURL(photoURL);

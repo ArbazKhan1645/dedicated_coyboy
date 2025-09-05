@@ -189,7 +189,7 @@ class ListBrowseToggleWidget extends StatefulWidget {
     this.onListTap,
     this.onBrowseTap,
     this.isListSelected = true,
-    this.selectedColor = const Color(0xFFF3B340), // Orange color
+    this.selectedColor = const Color(0xFFF2B342), // Orange color
     this.unselectedColor = const Color(0xFF9E9E9E), // Gray color
     this.textColor = Colors.white,
     this.unselectedTextColor = Colors.white,
@@ -206,7 +206,7 @@ class _ListBrowseToggleWidgetState extends State<ListBrowseToggleWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: 55,
-      decoration: BoxDecoration(color: appColors.grey.withOpacity(.5)),
+      decoration: BoxDecoration(color: appColors.darkBlue),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Row(
@@ -218,6 +218,7 @@ class _ListBrowseToggleWidgetState extends State<ListBrowseToggleWidget> {
               style: Appthemes.textMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 fontSize: 16.sp,
+                color: Colors.white,
               ),
             ),
             Spacer(),
@@ -230,7 +231,6 @@ class _ListBrowseToggleWidgetState extends State<ListBrowseToggleWidget> {
                   selectedOption = ListOption.item;
                   lastAction = "List An Item tapped!";
                 });
-                print("List An Item selected!");
                 Get.to(() => ListAnItemScreen());
               },
               onBusinessTap: () {
@@ -238,7 +238,7 @@ class _ListBrowseToggleWidgetState extends State<ListBrowseToggleWidget> {
                   selectedOption = ListOption.business;
                   lastAction = "List A Business tapped!";
                 });
-                print("List A Business selected!");
+
                 Get.to(() => ListAnBussinessScreen());
               },
               onEventTap: () {
@@ -247,7 +247,6 @@ class _ListBrowseToggleWidgetState extends State<ListBrowseToggleWidget> {
                   lastAction = "List An Event tapped!";
                 });
                 Get.to(() => ListAnEventScreen());
-                print("List An Event selected!");
               },
             ),
 

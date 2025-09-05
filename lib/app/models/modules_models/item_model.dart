@@ -4,8 +4,7 @@ class ItemListing {
   final String? id; // Firebase document ID
   final String? itemName;
   final String? description;
-  final String? category;
-  final String? subcategory;
+  final List<String>? category;
   final String? location;
   final String? cityState;
   final double? latitude;
@@ -19,13 +18,19 @@ class ItemListing {
   final String? brand;
   final double? price;
   final String? shippingInfo;
+  final String? phoneNumber;
   final String? email;
   final String? preferredContactMethod; // 'text', 'messenger', 'email'
-  final String? paymentMethod; // 'paypal', 'venmo', 'cash', 'credit_card'
+  final List<String>? paymentMethod; // 'paypal', 'venmo', 'cash', 'credit_card'
   final String? otherPaymentOptions;
+  final String? paypalAccount; // New field
+  final String? cashappAccount; // New field
+  final String? venmoAccount; // New field
+  final String? facebookPage; // New field
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? userId; // Reference to user who created the listing
+  final String? paymentStatus; // New field: payment status
   final bool? isActive;
 
   const ItemListing({
@@ -33,7 +38,6 @@ class ItemListing {
     this.itemName,
     this.description,
     this.category,
-    this.subcategory,
     this.location,
     this.cityState,
     this.latitude,
@@ -51,10 +55,16 @@ class ItemListing {
     this.preferredContactMethod,
     this.paymentMethod,
     this.otherPaymentOptions,
+    this.paymentStatus, // New field
+    this.paypalAccount, // New field
+    this.cashappAccount, // New field
+    this.venmoAccount, // New field
     this.createdAt,
     this.updatedAt,
+    this.facebookPage,
     this.userId,
     this.isActive,
+    this.phoneNumber,
   });
 
   // Convert to Map for Firebase
@@ -63,7 +73,6 @@ class ItemListing {
       'itemName': itemName,
       'description': description,
       'category': category,
-      'subcategory': subcategory,
       'location': location,
       'cityState': cityState,
       'latitude': latitude,
@@ -81,10 +90,16 @@ class ItemListing {
       'preferredContactMethod': preferredContactMethod,
       'paymentMethod': paymentMethod,
       'otherPaymentOptions': otherPaymentOptions,
+      'paypalAccount': paypalAccount, // New field
+      'cashappAccount': cashappAccount, // New field
+      'venmoAccount': venmoAccount, // New field
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'paymentStatus': paymentStatus,
       'userId': userId,
       'isActive': isActive ?? true,
+      'facebookPage': facebookPage,
+      'phonenumber': phoneNumber,
     };
   }
 
@@ -97,22 +112,26 @@ class ItemListing {
       id: documentId,
       itemName: data['itemName'] as String?,
       description: data['description'] as String?,
-      category: data['category'] as String?,
-      subcategory: data['subcategory'] as String?,
+      category:
+          data['category'] != null ? List<String>.from(data['category']) : null,
       location: data['location'] as String?,
       cityState: data['cityState'] as String?,
       latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
+      paymentStatus: data['paymentStatus'] ?? 'pending',
       linkWebsite: data['linkWebsite'] as String?,
-      photoUrls: data['photoUrls'] != null 
-          ? List<String>.from(data['photoUrls']) 
-          : null,
-      videoUrls: data['videoUrls'] != null 
-          ? List<String>.from(data['videoUrls']) 
-          : null,
-      attachmentUrls: data['attachmentUrls'] != null 
-          ? List<String>.from(data['attachmentUrls']) 
-          : null,
+      photoUrls:
+          data['photoUrls'] != null
+              ? List<String>.from(data['photoUrls'])
+              : null,
+      videoUrls:
+          data['videoUrls'] != null
+              ? List<String>.from(data['videoUrls'])
+              : null,
+      attachmentUrls:
+          data['attachmentUrls'] != null
+              ? List<String>.from(data['attachmentUrls'])
+              : null,
       sizeDimensions: data['sizeDimensions'] as String?,
       condition: data['condition'] as String?,
       brand: data['brand'] as String?,
@@ -120,14 +139,26 @@ class ItemListing {
       shippingInfo: data['shippingInfo'] as String?,
       email: data['email'] as String?,
       preferredContactMethod: data['preferredContactMethod'] as String?,
-      paymentMethod: data['paymentMethod'] as String?,
+      paymentMethod:
+          data['paymentMethod'] != null
+              ? data['paymentMethod'] is String
+                  ? [data['paymentMethod']]
+                  : List<String>.from(data['paymentMethod'])
+              : null,
       otherPaymentOptions: data['otherPaymentOptions'] as String?,
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : null,
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+      paypalAccount: data['paypalAccount'] as String?, // New field
+      cashappAccount: data['cashappAccount'] as String?, // New field
+      venmoAccount: data['venmoAccount'] as String?, // New field
+      facebookPage: data['facebookPage'] as String?,
+      phoneNumber: data['phonenumber'] ?? '',
+      createdAt:
+          data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : null,
+      updatedAt:
+          data['updatedAt'] != null
+              ? (data['updatedAt'] as Timestamp).toDate()
+              : null,
       userId: data['userId'] as String?,
       isActive: data['isActive'] as bool? ?? true,
     );
@@ -138,8 +169,7 @@ class ItemListing {
     String? id,
     String? itemName,
     String? description,
-    String? category,
-    String? subcategory,
+    List<String>? category,
     String? location,
     String? cityState,
     double? latitude,
@@ -152,26 +182,32 @@ class ItemListing {
     String? condition,
     String? brand,
     double? price,
+    String? facebookPage,
     String? shippingInfo,
     String? email,
     String? preferredContactMethod,
-    String? paymentMethod,
+    List<String>? paymentMethod,
     String? otherPaymentOptions,
+    String? paypalAccount, // New field
+    String? cashappAccount, // New field
+    String? venmoAccount, // New field
     DateTime? createdAt,
     DateTime? updatedAt,
     String? userId,
     bool? isActive,
+    String? phoneNumber,
+    String? paymentStatus,
   }) {
     return ItemListing(
       id: id ?? this.id,
       itemName: itemName ?? this.itemName,
       description: description ?? this.description,
       category: category ?? this.category,
-      subcategory: subcategory ?? this.subcategory,
       location: location ?? this.location,
       cityState: cityState ?? this.cityState,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      facebookPage: facebookPage ?? this.facebookPage,
       linkWebsite: linkWebsite ?? this.linkWebsite,
       photoUrls: photoUrls ?? this.photoUrls,
       videoUrls: videoUrls ?? this.videoUrls,
@@ -182,13 +218,19 @@ class ItemListing {
       price: price ?? this.price,
       shippingInfo: shippingInfo ?? this.shippingInfo,
       email: email ?? this.email,
-      preferredContactMethod: preferredContactMethod ?? this.preferredContactMethod,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      preferredContactMethod:
+          preferredContactMethod ?? this.preferredContactMethod,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       otherPaymentOptions: otherPaymentOptions ?? this.otherPaymentOptions,
+      paypalAccount: paypalAccount ?? this.paypalAccount, // New field
+      cashappAccount: cashappAccount ?? this.cashappAccount, // New field
+      venmoAccount: venmoAccount ?? this.venmoAccount, // New field
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
     );
   }
 
@@ -206,6 +248,3 @@ class ItemListing {
   @override
   int get hashCode => id.hashCode;
 }
-
-// Import statement needed for Timestamp
-// import 'package:cloud_firestore/cloud_firestore.dart';

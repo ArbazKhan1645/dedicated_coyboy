@@ -1,5 +1,6 @@
 import 'package:dedicated_cowboy/consts/appthemes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class CustomTextField extends StatefulWidget {
@@ -9,14 +10,13 @@ class CustomTextField extends StatefulWidget {
   final bool isPassword;
   final Widget? suffixIcon;
   final Widget? prefixIcon;
-  final String? customPasswordIcon; // Custom password icon image path
-  final String?
-  customPasswordIconVisible; // Custom icon when password is visible
+  final String? customPasswordIcon;
+  final String? customPasswordIconVisible;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final void Function(String)? onSubmitted;
-  final VoidCallback? onTap; // ✅ New onTap
+  final VoidCallback? onTap;
   final bool enabled;
   final bool required;
   final bool readOnly;
@@ -32,6 +32,7 @@ class CustomTextField extends StatefulWidget {
   final EdgeInsets? contentPadding;
   final bool showLabel;
   final double? customPasswordIconSize;
+  final List<TextInputFormatter>? inputFormatters; // ✅ Add this parameter
 
   const CustomTextField({
     Key? key,
@@ -48,7 +49,7 @@ class CustomTextField extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.onSubmitted,
-    this.onTap, // ✅ New onTap param
+    this.onTap,
     this.enabled = true,
     this.readOnly = false,
     this.maxLines = 1,
@@ -63,6 +64,7 @@ class CustomTextField extends StatefulWidget {
     this.contentPadding,
     this.showLabel = true,
     this.customPasswordIconSize = 24.0,
+    this.inputFormatters, // ✅ Add this parameter
   }) : super(key: key);
 
   @override
@@ -122,10 +124,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
           validator: widget.validator,
           onChanged: widget.onChanged,
           onFieldSubmitted: widget.onSubmitted,
-          onTap: widget.onTap, // ✅ Allow tap handling
+          onTap: widget.onTap,
           enabled: widget.enabled,
-          readOnly: widget.readOnly, // ✅ Already here
+          readOnly: widget.readOnly,
           maxLines: widget.maxLines,
+          inputFormatters: widget.inputFormatters, // ✅ Add this line
           style: Appthemes.textSmall.copyWith(
             fontSize: widget.fontSize,
             color: widget.textColor,
@@ -143,7 +146,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             contentPadding:
                 widget.contentPadding ??
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-            prefixIcon: widget.prefixIcon,
+            // prefixIcon: widget.prefixIcon, // ✅ Uncommented this line
             suffixIcon: _buildSuffixIcon(),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(widget.borderRadius),
@@ -219,5 +222,69 @@ class _CustomTextFieldState extends State<CustomTextField> {
       }
     }
     return widget.suffixIcon;
+  }
+}
+
+class PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Remove all non-digit characters
+    String digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+
+    // Limit to 10 digits
+    if (digitsOnly.length > 10) {
+      digitsOnly = digitsOnly.substring(0, 10);
+    }
+
+    // Format based on length
+    String formatted = '';
+    int cursorPosition = newValue.selection.baseOffset;
+
+    if (digitsOnly.isNotEmpty) {
+      formatted = digitsOnly.substring(0, digitsOnly.length.clamp(0, 3));
+
+      if (digitsOnly.length >= 4) {
+        formatted +=
+            '-${digitsOnly.substring(3, digitsOnly.length.clamp(3, 6))}';
+
+        if (digitsOnly.length >= 7) {
+          formatted +=
+              '-${digitsOnly.substring(6, digitsOnly.length.clamp(6, 10))}';
+        }
+      }
+    }
+
+    // Calculate new cursor position
+    int newCursorPosition = formatted.length;
+    if (cursorPosition <= oldValue.text.length) {
+      // Count digits before cursor in old text
+      String beforeCursor = oldValue.text.substring(
+        0,
+        cursorPosition.clamp(0, oldValue.text.length),
+      );
+      int digitsBefore = beforeCursor.replaceAll(RegExp(r'[^\d]'), '').length;
+
+      // Find position after same number of digits in new text
+      int digitsCount = 0;
+      for (int i = 0; i < formatted.length; i++) {
+        if (RegExp(r'\d').hasMatch(formatted[i])) {
+          digitsCount++;
+          if (digitsCount == digitsBefore) {
+            newCursorPosition = i + 1;
+            break;
+          }
+        }
+      }
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(
+        offset: newCursorPosition.clamp(0, formatted.length),
+      ),
+    );
   }
 }

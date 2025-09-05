@@ -4,7 +4,7 @@ class EventListing {
   final String? id; // Firebase document ID
   final String? eventName;
   final String? description;
-  final String? eventCategory;
+  final List<String>? eventCategory;
   final String? address;
   final double? latitude;
   final double? longitude;
@@ -13,6 +13,7 @@ class EventListing {
   final List<String>? photoUrls;
   final List<String>? videoUrls;
   final List<String>? attachmentUrls;
+  final String? paymentStatus; // New field: payment status
   final String? email;
   final String? phoneText;
   final String? phoneCall;
@@ -33,6 +34,7 @@ class EventListing {
     this.address,
     this.latitude,
     this.longitude,
+    this.paymentStatus, // New field
     this.eventWebsiteRegistrationLink,
     this.facebookEventSocialLink,
     this.photoUrls,
@@ -65,6 +67,7 @@ class EventListing {
       'photoUrls': photoUrls,
       'videoUrls': videoUrls,
       'attachmentUrls': attachmentUrls,
+      'paymentStatus': paymentStatus,
       'email': email,
       'phoneText': phoneText,
       'phoneCall': phoneCall,
@@ -88,37 +91,49 @@ class EventListing {
       id: documentId,
       eventName: data['eventName'] as String?,
       description: data['description'] as String?,
-      eventCategory: data['eventCategory'] as String?,
+      eventCategory:
+          data['eventCategory'] != null
+              ? List<String>.from(data['eventCategory'])
+              : null,
       address: data['address'] as String?,
       latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-      eventWebsiteRegistrationLink: data['eventWebsiteRegistrationLink'] as String?,
+      paymentStatus: data['paymentStatus'] ?? 'pending',
+      eventWebsiteRegistrationLink:
+          data['eventWebsiteRegistrationLink'] as String?,
       facebookEventSocialLink: data['facebookEventSocialLink'] as String?,
-      photoUrls: data['photoUrls'] != null 
-          ? List<String>.from(data['photoUrls']) 
-          : null,
-      videoUrls: data['videoUrls'] != null 
-          ? List<String>.from(data['videoUrls']) 
-          : null,
-      attachmentUrls: data['attachmentUrls'] != null 
-          ? List<String>.from(data['attachmentUrls']) 
-          : null,
+      photoUrls:
+          data['photoUrls'] != null
+              ? List<String>.from(data['photoUrls'])
+              : null,
+      videoUrls:
+          data['videoUrls'] != null
+              ? List<String>.from(data['videoUrls'])
+              : null,
+      attachmentUrls:
+          data['attachmentUrls'] != null
+              ? List<String>.from(data['attachmentUrls'])
+              : null,
       email: data['email'] as String?,
       phoneText: data['phoneText'] as String?,
       phoneCall: data['phoneCall'] as String?,
       facebook: data['facebook'] as String?,
-      eventStartDate: data['eventStartDate'] != null 
-          ? (data['eventStartDate'] as Timestamp).toDate() 
-          : null,
-      eventEndDate: data['eventEndDate'] != null 
-          ? (data['eventEndDate'] as Timestamp).toDate() 
-          : null,
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : null,
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+      eventStartDate:
+          data['eventStartDate'] != null
+              ? (data['eventStartDate'] as Timestamp).toDate()
+              : null,
+      eventEndDate:
+          data['eventEndDate'] != null
+              ? (data['eventEndDate'] as Timestamp).toDate()
+              : null,
+      createdAt:
+          data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : null,
+      updatedAt:
+          data['updatedAt'] != null
+              ? (data['updatedAt'] as Timestamp).toDate()
+              : null,
       userId: data['userId'] as String?,
       isActive: data['isActive'] as bool? ?? true,
       isFeatured: data['isFeatured'] as bool? ?? false,
@@ -130,7 +145,7 @@ class EventListing {
     String? id,
     String? eventName,
     String? description,
-    String? eventCategory,
+    List<String>? eventCategory,
     String? address,
     double? latitude,
     double? longitude,
@@ -149,6 +164,7 @@ class EventListing {
     DateTime? updatedAt,
     String? userId,
     bool? isActive,
+    String? paymentStatus,
     bool? isFeatured,
   }) {
     return EventListing(
@@ -159,8 +175,10 @@ class EventListing {
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      eventWebsiteRegistrationLink: eventWebsiteRegistrationLink ?? this.eventWebsiteRegistrationLink,
-      facebookEventSocialLink: facebookEventSocialLink ?? this.facebookEventSocialLink,
+      eventWebsiteRegistrationLink:
+          eventWebsiteRegistrationLink ?? this.eventWebsiteRegistrationLink,
+      facebookEventSocialLink:
+          facebookEventSocialLink ?? this.facebookEventSocialLink,
       photoUrls: photoUrls ?? this.photoUrls,
       videoUrls: videoUrls ?? this.videoUrls,
       attachmentUrls: attachmentUrls ?? this.attachmentUrls,
@@ -175,16 +193,17 @@ class EventListing {
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
       isFeatured: isFeatured ?? this.isFeatured,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
     );
   }
 
   // Validation method
   bool get isValid {
-    return eventName != null && 
-           eventName!.isNotEmpty &&
-           eventCategory != null &&
-           eventCategory!.isNotEmpty &&
-           eventStartDate != null;
+    return eventName != null &&
+        eventName!.isNotEmpty &&
+        eventCategory != null &&
+        eventCategory!.isNotEmpty &&
+        eventStartDate != null;
   }
 
   // Check if event is upcoming
@@ -201,9 +220,9 @@ class EventListing {
       return now.isAfter(eventStartDate!) && now.isBefore(eventEndDate!);
     }
     // If no end date, assume it's a single day event
-    return now.day == eventStartDate!.day && 
-           now.month == eventStartDate!.month && 
-           now.year == eventStartDate!.year;
+    return now.day == eventStartDate!.day &&
+        now.month == eventStartDate!.month &&
+        now.year == eventStartDate!.year;
   }
 
   // Check if event has ended

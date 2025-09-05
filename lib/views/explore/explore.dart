@@ -160,14 +160,14 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     return businesses.where((business) {
       final name = business.businessName?.toLowerCase() ?? '';
-      final category = business.businessCategory?.toLowerCase() ?? '';
       final description = business.description?.toLowerCase() ?? '';
       final location = business.address?.toLowerCase() ?? '';
+      final categories = business.businessCategory ?? []; // List<String>
 
       return name.contains(_searchQuery) ||
-          category.contains(_searchQuery) ||
           description.contains(_searchQuery) ||
-          location.contains(_searchQuery);
+          location.contains(_searchQuery) ||
+          categories.any((c) => c.toLowerCase().contains(_searchQuery));
     }).toList();
   }
 
@@ -176,14 +176,14 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     return events.where((event) {
       final name = event.eventName?.toLowerCase() ?? '';
-      final category = event.eventCategory?.toLowerCase() ?? '';
       final description = event.description?.toLowerCase() ?? '';
       final location = event.address?.toLowerCase() ?? '';
+      final categories = event.eventCategory ?? []; // List<String>
 
       return name.contains(_searchQuery) ||
-          category.contains(_searchQuery) ||
           description.contains(_searchQuery) ||
-          location.contains(_searchQuery);
+          location.contains(_searchQuery) ||
+          categories.any((c) => c.toLowerCase().contains(_searchQuery));
     }).toList();
   }
 
@@ -202,7 +202,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           '${_getMonthName(date.month)} ${date.day}, ${date.year}';
 
       if (event.eventStartDate != null) {
-        return '$formattedDate, ${event.eventStartDate}';
+        return '$formattedDate';
       }
       return formattedDate;
     }
@@ -344,24 +344,25 @@ class _ExploreScreenState extends State<ExploreScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              business.businessName ?? 'Unnamed Business',
+                              (business.businessCategory ?? []).join(', '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
                                 color: Color(0xff364C63),
                               ),
                             ),
                             SizedBox(height: 4),
+
                             Text(
-                              business.businessCategory ?? 'General',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              business.businessName ?? 'Unnamed Business',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xff000000),
                               ),
                             ),
+
                             SizedBox(height: 2),
                             Text(
                               '${_formatBusinessHours(business)} - ${business.address ?? 'Location not specified'}',
@@ -369,7 +370,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: Color(0xff364C63),
                               ),
                             ),
                             if (business.isVerified == true) ...[
@@ -547,7 +548,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                     _formatEventDateTime(event),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey[600],
+                                      color: Color(0xff364C63),
                                     ),
                                   ),
                                   if (event.address != null) ...[
@@ -558,7 +559,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey[600],
+                                        color: Color(0xff364C63),
                                       ),
                                     ),
                                   ],
@@ -568,7 +569,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   //     '£${event.entryFee!.toStringAsFixed(2)}',
                                   //     style: TextStyle(
                                   //       fontSize: 14,
-                                  //       color: Color(0xffF3B340),
+                                  //       color: Color(0xFFF2B342),
                                   //       fontWeight: FontWeight.w600,
                                   //     ),
                                   //   ),

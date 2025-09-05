@@ -42,8 +42,7 @@
         android:label="Dedicated Cowboy"
         android:usesCleartextTraffic="true"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
- >
+        android:icon="@mipmap/ic_launcher">
         
         <activity
             android:name=".MainActivity"
@@ -54,17 +53,55 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+              android:resource="@style/NormalTheme" />
+              
+            <!-- Standard App Launch Intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            
+            <!-- Deep Link for Stripe redirects -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dedicated-cowboy" android:host="stripe-redirect" />
+            </intent-filter>
+        </activity>
+
+        <!-- Facebook Configuration -->
+        <meta-data 
+            android:name="com.facebook.sdk.ApplicationId" 
+            android:value="@string/facebook_app_id" />
+        
+        <meta-data 
+            android:name="com.facebook.sdk.ClientToken" 
+            android:value="@string/facebook_client_token" />
+
+        <!-- Facebook Login Activity -->
+        <activity 
+            android:name="com.facebook.FacebookActivity" 
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation" 
+            android:label="@string/app_name"
+            android:exported="false" />
+        
+        <!-- Facebook Custom Tab Activity -->
+        <activity 
+            android:name="com.facebook.CustomTabActivity" 
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/fb_login_protocol_scheme" />
             </intent-filter>
         </activity>
 
@@ -91,14 +128,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Firebase and Google Services Meta-data -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDIz7irjECc_418w_XfkdzcFuCZaxMNzYg" />
+
     </application>
     
     <!-- Required to query activities that can process text, see:
@@ -119,5 +157,10 @@
         <intent>
             <action android:name="android.intent.action.GET_CONTENT"/>
         </intent>
+        <!-- Facebook queries -->
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
+        <!-- Google Play Services -->
+        <package android:name="com.google.android.gms" />
     </queries>
 </manifest>

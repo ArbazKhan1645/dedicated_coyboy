@@ -4,6 +4,9 @@ import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/views/notifications/notifications.dart';
 import 'package:dedicated_cowboy/views/predrences/prefrences.dart';
+import 'package:dedicated_cowboy/views/privacy/about.dart';
+import 'package:dedicated_cowboy/views/privacy/privacy.dart';
+import 'package:dedicated_cowboy/views/privacy/terms.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +36,7 @@ class ProfileScreen extends StatelessWidget {
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         onRefresh: controller.loadUserProfile,
-        color: Color(0xFFF3B340),
+        color: Color(0xFFF2B342),
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
@@ -59,6 +62,7 @@ class ProfileScreen extends StatelessWidget {
       title: const Text(
         'MY Account',
         style: TextStyle(
+          fontFamily: 'popins',
           color: Colors.black87,
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -87,119 +91,121 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
-    return Obx(
-      () => Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Avatar
-            Stack(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                  child: ClipOval(
-                    child:
-                        controller.userAvatar.value.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: controller.userAvatar.value,
-                              fit: BoxFit.cover,
-                              placeholder:
-                                  (context, url) => Container(
-                                    color: Colors.white,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Color(0xFFF3B340),
-                                        strokeWidth: 2,
-                                      ),
+    return Container(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Profile Avatar
+          Stack(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+                child: ClipOval(
+                  child:
+                      controller.userAvatar.value.isNotEmpty
+                          ? CachedNetworkImage(
+                            imageUrl: controller.userAvatar.value,
+                            fit: BoxFit.cover,
+                            placeholder:
+                                (context, url) => Container(
+                                  color: Colors.white,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFFF2B342),
+                                      strokeWidth: 2,
                                     ),
                                   ),
-                              errorWidget:
-                                  (context, url, error) =>
-                                      _buildAvatarFallback(),
-                            )
-                            : _buildAvatarFallback(),
+                                ),
+                            errorWidget:
+                                (context, url, error) => _buildAvatarFallback(),
+                          )
+                          : _buildAvatarFallback(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // User Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  FirebaseAuth.instance.currentUser?.displayName ?? 'No name',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontFamily: 'popins',
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  FirebaseAuth.instance.currentUser?.email ?? 'No name',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontFamily: 'popins',
+                    color: Colors.black.withOpacity(0.9),
+                  ),
+                ),
+                if (controller.userPhone.value.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    controller.userPhone.value,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'popins',
+                      color: Colors.black.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: controller.toggleEdit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFF2B342),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                  ),
+                  child: const Text(
+                    'EDIT PROFILE',
+                    style: TextStyle(
+                      fontFamily: 'popins',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 16),
-            // User Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    FirebaseAuth.instance.currentUser?.displayName ?? 'No name',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    FirebaseAuth.instance.currentUser?.email ?? 'No name',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black.withOpacity(0.9),
-                    ),
-                  ),
-                  if (controller.userPhone.value.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      controller.userPhone.value,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: controller.toggleEdit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFF3B340),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: const Text(
-                      'EDIT PROFILE',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAvatarFallback() {
     return Container(
-      color: Color(0xFFF3B340).withOpacity(0.2),
+      color: Color(0xFFF2B342).withOpacity(0.2),
       child: Center(
         child: Text(
           controller.currentUser.value?.initials ?? 'U',
           style: TextStyle(
-            color: Color(0xFFF3B340),
+            fontFamily: 'popins',
+            color: Color(0xFFF2B342),
             fontSize: 32,
             fontWeight: FontWeight.bold,
           ),
@@ -275,6 +281,7 @@ class ProfileScreen extends StatelessWidget {
                   child: Text(
                     user.about!,
                     style: TextStyle(
+                      fontFamily: 'popins',
                       fontSize: 14,
                       color: Colors.black87,
                       height: 1.5,
@@ -380,7 +387,7 @@ class ProfileScreen extends StatelessWidget {
     Get.snackbar(
       'Opening',
       url,
-      backgroundColor: Color(0xFFF3B340),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
     );
   }
@@ -411,6 +418,7 @@ class ProfileScreen extends StatelessWidget {
             title,
             style: const TextStyle(
               fontSize: 16,
+              fontFamily: 'popins',
               fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
@@ -434,6 +442,7 @@ class ProfileScreen extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 14,
+                fontFamily: 'popins',
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
               ),
@@ -444,6 +453,7 @@ class ProfileScreen extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: 14,
+                fontFamily: 'popins',
                 color: Colors.black87,
                 fontWeight: FontWeight.w500,
               ),
@@ -490,6 +500,31 @@ class ProfileScreen extends StatelessWidget {
           },
         ),
         _buildMenuItem(
+          icon: 'assets/images/contact_page.png',
+          title: 'Our Story',
+          subtitle: 'Learn more about who we are and what we do',
+          onTap: () {
+            Get.to(() => AboutUsScreen());
+          },
+        ),
+        _buildMenuItem(
+          icon: 'assets/images/contact_page.png',
+          title: 'Privacy Policy',
+          subtitle: 'Understand how we protect and use your data',
+          onTap: () {
+            Get.to(() => PrivacyPolicyScreen());
+          },
+        ),
+        _buildMenuItem(
+          icon: 'assets/images/contact_page.png',
+          title: 'Terms and Conditions',
+          subtitle: 'Read the rules and guidelines for using our services',
+          onTap: () {
+            Get.to(() => TermsConditionsScreen());
+          },
+        ),
+
+        _buildMenuItem(
           icon: 'assets/images/Administrative Tools.png',
           title: 'Preferences',
           subtitle: 'Set your app and content preferences',
@@ -523,7 +558,7 @@ class ProfileScreen extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isDestructive ? Colors.red.shade50 : Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -549,7 +584,7 @@ class ProfileScreen extends StatelessWidget {
                     color: isDestructive ? Colors.red.shade600 : Colors.black,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,12 +592,13 @@ class ProfileScreen extends StatelessWidget {
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontFamily: 'popins',
+                          fontWeight: FontWeight.w400,
                           color:
                               isDestructive
                                   ? Colors.red.shade700
-                                  : Colors.black87,
+                                  : Colors.black,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -570,6 +606,7 @@ class ProfileScreen extends StatelessWidget {
                         subtitle,
                         style: TextStyle(
                           fontSize: 12,
+                          fontFamily: 'popins',
                           color:
                               isDestructive
                                   ? Colors.red.shade500

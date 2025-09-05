@@ -58,23 +58,15 @@ class SubscriptionPlan {
   static List<SubscriptionPlan> getDefaultPlans() {
     return [
       SubscriptionPlan(
-        id: 'daily_plan',
-        name: 'Daily Listing',
-        type: SubscriptionType.daily,
-        price: 1.99,
-        duration: 1,
-        features: ['Post Account Number', 'Basic Listing', 'Phone Number'],
-        description: 'Perfect for one-time events or short-term needs',
-      ),
-      SubscriptionPlan(
         id: 'monthly_plan',
         name: 'Monthly Listing',
         type: SubscriptionType.monthly,
         price: 5.00,
         duration: 30,
-        features: ['Post Account Number', 'Watchbox', 'Phone Number', 'Priority Support'],
+        features: ['CashApp account number', 'Facebook', 'Phone number'],
+        description:
+            'Thank you for signing up! You\'ll receive a reminder before your subscription expires, and you can upgrade to a yearly plan anytime from your dashboard.',
         isPopular: true,
-        description: 'Most popular choice for regular users',
       ),
       SubscriptionPlan(
         id: 'yearly_plan',
@@ -82,8 +74,9 @@ class SubscriptionPlan {
         type: SubscriptionType.yearly,
         price: 50.00,
         duration: 365,
-        features: ['Post Account Number', 'Watchbox', 'Phone Number', 'Premium Features', 'Analytics Dashboard'],
-        description: 'Best value with significant savings',
+        features: ['CashApp account number', 'Facebook', 'Phone number'],
+        description:
+            'Save \$11 by purchasing a yearly listing at \$50.00 and reach other people who are searching specifically for western items!',
       ),
     ];
   }
@@ -143,8 +136,10 @@ class UserSubscription {
 
   bool get isActive => status == SubscriptionStatus.active && !isExpired;
   bool get isExpired => DateTime.now().isAfter(expiryDate);
-  int get daysRemaining => isExpired ? 0 : expiryDate.difference(DateTime.now()).inDays;
-  int get hoursRemaining => isExpired ? 0 : expiryDate.difference(DateTime.now()).inHours;
+  int get daysRemaining =>
+      isExpired ? 0 : expiryDate.difference(DateTime.now()).inDays;
+  int get hoursRemaining =>
+      isExpired ? 0 : expiryDate.difference(DateTime.now()).inHours;
 
   UserSubscription copyWith({
     String? id,

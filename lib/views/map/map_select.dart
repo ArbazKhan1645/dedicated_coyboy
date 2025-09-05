@@ -1,4 +1,6 @@
+import 'package:dedicated_cowboy/consts/appthemes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -168,7 +170,12 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: [  
+          Text(
+            'Location/City & State',
+            style: Appthemes.textSmall.copyWith(fontFamily: 'popins-bold', color: Color(0xFF424242)),
+          ),
+          SizedBox(height: 10),
           // Content area
           Container(
             decoration: const BoxDecoration(
@@ -196,7 +203,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                       border: Border.all(
                         color:
                             _selectedLocation != null
-                                ? Colors.blue.shade200
+                                ? const Color(0xFFF2B342)
                                 : Colors.grey.shade300,
                         width: 1.5,
                       ),
@@ -215,7 +222,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                           decoration: BoxDecoration(
                             color:
                                 _selectedLocation != null
-                                    ? Colors.blue.shade100
+                                    ? const Color(0xFFF2B342)
                                     : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -223,7 +230,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                             Icons.search,
                             color:
                                 _selectedLocation != null
-                                    ? Colors.blue.shade600
+                                    ? Colors.white
                                     : Colors.grey.shade600,
                             size: 20,
                           ),
@@ -232,31 +239,35 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                _displayAddress.isEmpty
-                                    ? widget.hintText
-                                    : 'Selected Location',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
+                              if (_displayAddress.isNotEmpty)
+                                Text(
+                                  _displayAddress.isEmpty
+                                      ? ''
+                                      : 'Selected Location',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
+                              if (_displayAddress.isNotEmpty)
+                                const SizedBox(height: 2),
                               Text(
                                 _displayAddress.isEmpty
-                                    ? 'Tap to search and select'
+                                    ? 'Listing address eg. 123 Main St, City, State'
                                     : _displayAddress,
+
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 12.sp,
                                   color:
                                       _displayAddress.isEmpty
                                           ? Colors.grey.shade500
                                           : Colors.black87,
                                   fontWeight: FontWeight.w500,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -393,7 +404,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: Colors.green,
+                                      color: Color(0xFFF2B342),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(
@@ -642,7 +653,7 @@ class _LocationSearchScreenState extends State<LocationSearchScreen>
               margin: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xffF3B340), Color(0xffF3B340)],
+                  colors: [Color(0xFFF2B342), Color(0xFFF2B342)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

@@ -93,8 +93,8 @@ class CustomElevatedButton extends StatelessWidget {
                         style: Appthemes.textMedium.copyWith(
                           color: textColor,
                           fontSize: fontSize,
-                          fontWeight: fontWeight,
-                          fontFamily: 'popins-bold',
+
+                          fontFamily: 'popins',
                         ),
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
@@ -142,7 +142,7 @@ class ButtonExampleScreen extends StatelessWidget {
               height: 50,
               child: CustomElevatedButton(
                 text: 'SIGN UP',
-                backgroundColor: Color(0xFFF3B340),
+                backgroundColor: Color(0xFFF2B342),
                 onTap: () {
                   print('Sign up button tapped');
                 },
@@ -157,7 +157,7 @@ class ButtonExampleScreen extends StatelessWidget {
               height: 70,
               child: CustomElevatedButton(
                 text: 'Get Started',
-                backgroundColor: Color(0xFFF3B340),
+                backgroundColor: Color(0xFFF2B342),
                 imageAsset:
                     'assets/images/arrow_icon.png', // Your image asset path
                 textColor: Colors.white,

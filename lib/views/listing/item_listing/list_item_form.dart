@@ -10,12 +10,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 class ListItemForm extends StatelessWidget {
-  const ListItemForm({Key? key}) : super(key: key);
+  const ListItemForm({super.key});
 
   @override
   Widget build(BuildContext context) {
     // Initialize controller
-    final ListItemController controller = Get.find<ListItemController>();
+    final ListItemController controller =
+        Get.isRegistered<ListItemController>()
+            ? Get.find<ListItemController>()
+            : Get.put(ListItemController());
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -67,7 +70,7 @@ class ListItemForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: true,
                 labelText: 'Item Name',
-                hintText: 'Regulation Grill Brushes',
+                hintText: 'turquoise Cuff Bracelet, Fringe Leather Jacket',
                 controller: controller.itemNameController,
               ),
 
@@ -77,7 +80,7 @@ class ListItemForm extends StatelessWidget {
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Description',
-                hintText: 'Ebay Item Online features Knotty, etc...',
+                hintText: 'Share item detail, features, history etc',
                 controller: controller.descriptionController,
                 maxLines: 5,
                 contentPadding: const EdgeInsets.symmetric(
@@ -136,19 +139,17 @@ class ListItemForm extends StatelessWidget {
               ),
 
               const SizedBox(height: 24),
-
-              // Select Category Dropdown
-              Obx(
-                () => _buildDropdownField(
-                  controller: controller,
-                  label: 'Select Category',
-                  isRequired: true,
-                  value: controller.categoryValue,
-                  items: controller.categories,
-                  onChanged: controller.selectCategory,
-                ),
+              CustomMultiSelectField(
+                title: 'Select Category',
+                hint: 'Category',
+                items: controller.categories,
+                selectedItems: controller.selectedCategories,
+                onSelectionChanged: (selected) {
+                  controller.selectCategory(selected);
+                },
               ),
 
+              // Select Category Dropdown
               const SizedBox(height: 20),
 
               // // Select Subcategory Dropdown
@@ -187,7 +188,7 @@ class ListItemForm extends StatelessWidget {
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Link/Website',
-                hintText: 'e.g www.377arena.com',
+                hintText: 'e.g https://www.377Larena.com',
                 controller: controller.linkWebsiteController,
                 keyboardType: TextInputType.url,
               ),
@@ -226,7 +227,7 @@ class ListItemForm extends StatelessWidget {
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Brand',
-                hintText: 'e.g what brand is your seat-wrangler, Double C',
+                hintText: 'Wrangler Double D',
                 controller: controller.brandController,
               ),
 
@@ -264,7 +265,7 @@ class ListItemForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: true,
                 labelText: 'Email',
-                hintText: 'Email Address',
+                hintText: 'Enter Correct Email',
                 controller: controller.emailController,
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: Icon(
@@ -280,9 +281,12 @@ class ListItemForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: false,
                 labelText: 'Phone Number',
-                hintText: 'Phone Number',
+                hintText: '123-456-7890',
                 controller: controller.phoneController,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  PhoneNumberFormatter(),
+                ], // ✅ Add the formatter here
                 prefixIcon: Icon(
                   Icons.call,
                   color: Colors.grey.shade500,
@@ -296,7 +300,7 @@ class ListItemForm extends StatelessWidget {
                 fontSize: 12.sp,
                 required: false,
                 labelText: 'Facebook',
-                hintText: 'Facebook page',
+                hintText: 'Facebook Profile Link',
                 controller: controller.facebookController,
                 keyboardType: TextInputType.text,
                 prefixIcon: Icon(
@@ -320,27 +324,46 @@ class ListItemForm extends StatelessWidget {
 
               // Paypal Field (conditional)
               Obx(() {
-                if (controller.selectedPaymentMethod.value == 'Paypal') {
+                {
                   return Column(
                     children: [
-                      CustomTextField(
-                        fontSize: 12.sp,
-                        labelText: 'Paypal',
-                        hintText: 'Add your Paypal account number here',
-                        controller: controller.paypalController,
-                      ),
-                      const SizedBox(height: 20),
+                      if (controller.selectedPaymentMethod.contains('Paypal'))
+                        CustomTextField(
+                          fontSize: 12.sp,
+                          labelText: 'Paypal',
+                          hintText: 'Add your Paypal account number here',
+                          controller: controller.paypalController,
+                        ),
+                      if (controller.selectedPaymentMethod.contains('Paypal'))
+                        const SizedBox(height: 20),
+                      if (controller.selectedPaymentMethod.contains('VENMO'))
+                        CustomTextField(
+                          fontSize: 12.sp,
+                          labelText: 'VENMO',
+                          hintText: 'Add your VENMO account number here',
+                          controller: controller.venmoAccountController,
+                        ),
+                      if (controller.selectedPaymentMethod.contains('VENMO'))
+                        const SizedBox(height: 20),
+                      if (controller.selectedPaymentMethod.contains('CashApp'))
+                        CustomTextField(
+                          fontSize: 12.sp,
+                          labelText: 'CashApp',
+                          hintText: 'Add your CashApp account number here',
+                          controller: controller.cashappAccountController,
+                        ),
+                      if (controller.selectedPaymentMethod.contains('CashApp'))
+                        const SizedBox(height: 20),
                     ],
                   );
                 }
-                return const SizedBox.shrink();
               }),
 
               // Other Payment Options Field
               CustomTextField(
                 fontSize: 12.sp,
                 labelText: 'Other Payment Options',
-                hintText: 'Add Zelle up to separate other options',
+                hintText: 'Add comma to separate other options',
                 controller: controller.otherPaymentController,
                 maxLines: 2,
               ),
@@ -393,8 +416,10 @@ class ListItemForm extends StatelessWidget {
                   Expanded(
                     child: _buildRadioOption(
                       controller.paymentMethods[0], // Paypal
-                      controller.selectedPaymentMethod.value ==
-                          controller.paymentMethods[0],
+                      controller.selectedPaymentMethod.contains(
+                        controller.paymentMethods[0],
+                      ),
+
                       () => controller.selectPaymentMethod(
                         controller.paymentMethods[0],
                       ),
@@ -404,8 +429,9 @@ class ListItemForm extends StatelessWidget {
                   Expanded(
                     child: _buildRadioOption(
                       controller.paymentMethods[2], // VENMO
-                      controller.selectedPaymentMethod.value ==
-                          controller.paymentMethods[2],
+                      controller.selectedPaymentMethod.contains(
+                        controller.paymentMethods[2],
+                      ),
                       () => controller.selectPaymentMethod(
                         controller.paymentMethods[2],
                       ),
@@ -419,8 +445,9 @@ class ListItemForm extends StatelessWidget {
                   Expanded(
                     child: _buildRadioOption(
                       controller.paymentMethods[1], // Cash
-                      controller.selectedPaymentMethod.value ==
-                          controller.paymentMethods[1],
+                      controller.selectedPaymentMethod.contains(
+                        controller.paymentMethods[1],
+                      ),
                       () => controller.selectPaymentMethod(
                         controller.paymentMethods[1],
                       ),
@@ -430,8 +457,9 @@ class ListItemForm extends StatelessWidget {
                   Expanded(
                     child: _buildRadioOption(
                       controller.paymentMethods[3], // Credit Card
-                      controller.selectedPaymentMethod.value ==
-                          controller.paymentMethods[3],
+                      controller.selectedPaymentMethod.contains(
+                        controller.paymentMethods[3],
+                      ),
                       () => controller.selectPaymentMethod(
                         controller.paymentMethods[3],
                       ),
@@ -657,12 +685,23 @@ class ListItemForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Upload Photos/Video/Attachments',
-          style: Appthemes.textSmall.copyWith(
-            fontFamily: 'popins-bold',
-            color: const Color(0xFF424242),
-          ),
+        Row(
+          children: [
+            Text(
+              'Upload Photos/Video/Attachments',
+              style: Appthemes.textSmall.copyWith(
+                fontFamily: 'popins-bold',
+                color: const Color(0xFF424242),
+              ),
+            ),
+            Text(
+              ' *',
+              style: Appthemes.textSmall.copyWith(
+                color: Colors.red,
+                fontSize: 15.sp,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -677,10 +716,14 @@ class ListItemForm extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.attach_file, color: Colors.grey.shade500, size: 20),
+                Icon(
+                  Icons.add_photo_alternate,
+                  color: Colors.grey.shade500,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  'Add PNG,JPG,MP4,DOC',
+                  'Add Images, Videos, Documents',
                   style: Appthemes.textSmall.copyWith(
                     color: const Color(0xFF9E9E9E),
                     fontSize: 12.sp,
@@ -692,28 +735,32 @@ class ListItemForm extends StatelessWidget {
           ),
         ),
 
-        // Display uploaded images with preview
+        // Display uploaded content
         Obx(() {
-          if (controller.imageUploadStatuses.isNotEmpty) {
-            return Container(
-              margin: const EdgeInsets.only(top: 12),
-              child: Column(
-                children: [
-                  // Image count indicator
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      '${controller.imageUploadStatuses.length} image(s) selected',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFF3B340),
-                      ),
+          final hasImages = controller.imageUploadStatuses.isNotEmpty;
+          final hasVideos = controller.videoUploadStatuses.isNotEmpty;
+          final hasAttachments = controller.attachmentUploadStatuses.isNotEmpty;
+
+          if (!hasImages && !hasVideos && !hasAttachments) {
+            return const SizedBox.shrink();
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Images Section
+                if (hasImages) ...[
+                  Text(
+                    'Images (${controller.imageUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
                     ),
                   ),
-
-                  // Grid of images
+                  const SizedBox(height: 8),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -729,37 +776,64 @@ class ListItemForm extends StatelessWidget {
                       final imageFile = controller.imageUploadStatuses[index];
                       return Stack(
                         children: [
-                          // Image preview
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
+                                color:
+                                    imageFile.isUploaded
+                                        ? Color(0xFFF2B342)
+                                        : imageFile.isUploading
+                                        ? Colors.orange
+                                        : Colors.red,
+                                width: 2,
                               ),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(7),
-                              child: Image.file(
-                                imageFile.file,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.shade200,
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey.shade400,
-                                      size: 30,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Stack(
+                                children: [
+                                  Image.file(
+                                    imageFile.file,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey.shade400,
+                                          size: 30,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (imageFile.isUploading)
+                                    Container(
+                                      color: Colors.black.withOpacity(0.5),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
+                                  if (imageFile.error != null)
+                                    Container(
+                                      color: Colors.red.withOpacity(0.5),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.error,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),
-
-                          // Remove button
                           Positioned(
                             top: 4,
                             right: 4,
@@ -790,12 +864,441 @@ class ListItemForm extends StatelessWidget {
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
                 ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
+
+                // Videos Section
+                if (hasVideos) ...[
+                  Text(
+                    'Videos (${controller.videoUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: controller.videoUploadStatuses.length,
+                    itemBuilder: (context, index) {
+                      final videoFile = controller.videoUploadStatuses[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                videoFile.isUploaded
+                                    ? Color(0xFFF2B342)
+                                    : videoFile.isUploading
+                                    ? Colors.orange
+                                    : Colors.red,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C3E50),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    videoFile.file.path.split('/').last,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    videoFile.isUploaded
+                                        ? 'Uploaded'
+                                        : videoFile.isUploading
+                                        ? 'Uploading...'
+                                        : 'Failed',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          videoFile.isUploaded
+                                              ? Color(0xFFF2B342)
+                                              : videoFile.isUploading
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (videoFile.isUploading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              IconButton(
+                                onPressed:
+                                    () => controller.removeVideo(videoFile),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Attachments Section
+                if (hasAttachments) ...[
+                  Text(
+                    'Attachments (${controller.attachmentUploadStatuses.length})',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: controller.attachmentUploadStatuses.length,
+                    itemBuilder: (context, index) {
+                      final attachmentFile =
+                          controller.attachmentUploadStatuses[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                attachmentFile.isUploaded
+                                    ? Color(0xFFF2B342)
+                                    : attachmentFile.isUploading
+                                    ? Colors.orange
+                                    : Colors.red,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF2B342),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.description,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    attachmentFile.file.path.split('/').last,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    attachmentFile.isUploaded
+                                        ? 'Uploaded'
+                                        : attachmentFile.isUploading
+                                        ? 'Uploading...'
+                                        : 'Failed',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          attachmentFile.isUploaded
+                                              ? Color(0xFFF2B342)
+                                              : attachmentFile.isUploading
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (attachmentFile.isUploading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              IconButton(
+                                onPressed:
+                                    () => controller.removeAttachment(
+                                      attachmentFile,
+                                    ),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          );
         }),
+      ],
+    );
+  }
+}
+
+class CustomMultiSelectField extends StatefulWidget {
+  final List<String> items;
+  final List<String> selectedItems;
+  final Function(List<String>) onSelectionChanged;
+  final String title;
+  final String hint;
+
+  const CustomMultiSelectField({
+    Key? key,
+    required this.items,
+    required this.selectedItems,
+    required this.onSelectionChanged,
+    this.title = "Business Category",
+    this.hint = "Select categories",
+  }) : super(key: key);
+
+  @override
+  State<CustomMultiSelectField> createState() => _CustomMultiSelectFieldState();
+}
+
+class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
+  bool _isExpanded = false;
+  List<String> _selectedItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedItems = List.from(widget.selectedItems);
+  }
+
+  void _toggleSelection(String item) {
+    setState(() {
+      if (_selectedItems.contains(item)) {
+        _selectedItems.remove(item);
+      } else {
+        _selectedItems.add(item);
+      }
+    });
+    widget.onSelectionChanged(_selectedItems);
+  }
+
+  void _removeItem(String item) {
+    setState(() {
+      _selectedItems.remove(item);
+    });
+    widget.onSelectionChanged(_selectedItems);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title with asterisk
+        RichText(
+          text: TextSpan(
+            text: widget.title,
+            style: Appthemes.textSmall.copyWith(fontFamily: 'popins-bold', color: Color(0xFF424242)),
+            children: [
+              TextSpan(
+                text: ' *',
+                style: TextStyle(color: Colors.red, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Main container
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white,
+          ),
+          child: Column(
+            children: [
+              // Selected items chips section
+              if (_selectedItems.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        _selectedItems.map((item) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _removeItem(item),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.grey,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                  ),
+                ),
+
+              // Dropdown trigger
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isExpanded = !_isExpanded;
+                  });
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border:
+                        _selectedItems.isNotEmpty
+                            ? Border(
+                              top: BorderSide(color: const Color(0xFFE0E0E0)),
+                            )
+                            : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _selectedItems.isEmpty
+                            ? widget.hint
+                            : "Select more categories",
+                        style: Appthemes.textMedium.copyWith(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12.sp,
+                          color: const Color(0xFF9E9E9E),
+                        ),
+                      ),
+                      Icon(
+                        _isExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        color: Colors.grey[600],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Dropdown list
+              if (_isExpanded)
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: widget.items.length,
+                    itemBuilder: (context, index) {
+                      final item = widget.items[index];
+                      final isSelected = _selectedItems.contains(item);
+
+                      return ListTile(
+                        dense: true,
+                        title: Text(item, style: const TextStyle(fontSize: 14)),
+                        trailing:
+                            isSelected
+                                ? const Icon(
+                                  Icons.check,
+                                  color: Colors.blue,
+                                  size: 20,
+                                )
+                                : null,
+                        onTap: () => _toggleSelection(item),
+                        tileColor:
+                            isSelected
+                                ? Colors.blue.withOpacity(0.1)
+                                : Colors.transparent,
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

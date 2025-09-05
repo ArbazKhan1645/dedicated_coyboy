@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
+import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -120,7 +121,7 @@ class ChatRoomsController extends GetxController {
     String? productImage,
   }) async {
     try {
-      final currentUser =  await _chatService.getUserProfile(otherUserId);
+      final currentUser = await _chatService.getUserProfile(otherUserId);
       if (currentUser == null) throw Exception('Current user not found');
 
       final chatRoomId = await _chatService.createOrGetChatRoom(
@@ -194,8 +195,15 @@ class ChatScreen extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(25),
+                    color: appColors.grey.withOpacity(.2),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: controller.searchController,
@@ -324,165 +332,178 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
- Widget _buildChatTile({
-  required ChatRoom chatRoom,
-  required String currentUserId,
-  required VoidCallback onTap,
-}) {
-  final unreadCount = chatRoom.unreadCount[currentUserId] ?? 0;
-  final isLastMessageFromMe = chatRoom.lastMessageSender == currentUserId;
-  final hasLastMessage = chatRoom.lastMessage != null;
+  Widget _buildChatTile({
+    required ChatRoom chatRoom,
+    required String currentUserId,
+    required VoidCallback onTap,
+  }) {
+    final unreadCount = chatRoom.unreadCount[currentUserId] ?? 0;
+    final isLastMessageFromMe = chatRoom.lastMessageSender == currentUserId;
+    final hasLastMessage = chatRoom.lastMessage != null;
 
-  final otherParticipant = chatRoom.participantData[chatRoom.participants.firstWhere(
-    (id) => id != currentUserId,
-  )];
+    final otherParticipant =
+        chatRoom.participantData[chatRoom.participants.firstWhere(
+          (id) => id != currentUserId,
+        )];
 
-  return InkWell(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          // Profile Avatar with Online Status
-          Stack(
-            children: [
-              // Avatar with fallback
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.orange[100], // Light orange background for initials
-                child: Stack(
-                  children: [
-                    if (otherParticipant?.avatar != null)
-                      ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: otherParticipant!.avatar!,
-                          placeholder: (context, url) => _buildInitialsAvatar(otherParticipant),
-                          errorWidget: (context, url, error) => _buildInitialsAvatar(otherParticipant),
-                          fit: BoxFit.cover,
-                          width: 48,
-                          height: 48,
-                        ),
-                      ),
-                    if (otherParticipant?.avatar == null)
-                      _buildInitialsAvatar(otherParticipant),
-                  ],
-                ),
-              ),
-              
-              // Online status indicator
-              if (otherParticipant?.isOnline == true)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25D366),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(width: 12),
-
-          // Chat Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // Profile Avatar with Online Status
+            Stack(
               children: [
-                // Name and Time Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      otherParticipant?.displayName ?? 'Unknown',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    if (hasLastMessage)
-                      Text(
-                        _formatChatTime(chatRoom.lastMessageTime!),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 4),
-
-                // Last Message
-                Row(
-                  children: [
-                    if (hasLastMessage && isLastMessageFromMe)
-                      const Icon(
-                        Icons.done_all,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                    if (hasLastMessage && isLastMessageFromMe)
-                      const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        hasLastMessage ? chatRoom.lastMessage! : 'Start chatting',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (unreadCount > 0)
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF25D366),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
+                // Avatar with fallback
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor:
+                      Colors
+                          .orange[100], // Light orange background for initials
+                  child: Stack(
+                    children: [
+                      if (otherParticipant?.avatar != null)
+                        ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: otherParticipant!.avatar!,
+                            placeholder:
+                                (context, url) =>
+                                    _buildInitialsAvatar(otherParticipant),
+                            errorWidget:
+                                (context, url, error) =>
+                                    _buildInitialsAvatar(otherParticipant),
+                            fit: BoxFit.cover,
+                            width: 48,
+                            height: 48,
                           ),
                         ),
-                      ),
-                  ],
+                      if (otherParticipant?.avatar == null)
+                        _buildInitialsAvatar(otherParticipant),
+                    ],
+                  ),
                 ),
+
+                // Online status indicator
+                if (otherParticipant?.isOnline == true)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF25D366),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
 
-Widget _buildInitialsAvatar(ChatParticipant? user) {
-  final displayName = user?.displayName ?? '?';
-  final initials = displayName.isNotEmpty 
-      ? displayName.substring(0, 1).toUpperCase()
-      : '?';
-  
-  return Center(
-    child: Text(
-      initials,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.orange, // Darker orange for contrast
+            const SizedBox(width: 12),
+
+            // Chat Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name and Time Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        otherParticipant?.displayName ?? 'Unknown',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight:
+                              unreadCount > 0
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                        ),
+                      ),
+                      if (hasLastMessage)
+                        Text(
+                          _formatChatTime(chatRoom.lastMessageTime!),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // Last Message
+                  Row(
+                    children: [
+                      if (hasLastMessage && isLastMessageFromMe)
+                        const Icon(
+                          Icons.done_all,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                      if (hasLastMessage && isLastMessageFromMe)
+                        const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          hasLastMessage
+                              ? chatRoom.lastMessage!
+                              : 'Start chatting',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF25D366),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Widget _buildInitialsAvatar(ChatParticipant? user) {
+    final displayName = user?.displayName ?? '?';
+    final initials =
+        displayName.isNotEmpty
+            ? displayName.substring(0, 1).toUpperCase()
+            : '?';
+
+    return Center(
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.orange, // Darker orange for contrast
+        ),
+      ),
+    );
+  }
 
   void _showChatOptions(ChatRoom chatRoom, UserModel? user) {
     Get.bottomSheet(

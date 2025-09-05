@@ -9,10 +9,10 @@ import 'package:get/get.dart';
 class InitialBindings extends Bindings {
   @override
   void dependencies() {
-    Get.put(SignInController(), permanent: true);
-    Get.put(SignUpController(), permanent: true);
-    Get.put(HomeController(), permanent: true);
-    Get.put(ListItemController(), permanent: true);
-    Get.put(ListEventController(), permanent: true);
+    // Get.put(SignInController(), permanent: true);
+    // Get.put(SignUpController(), permanent: true);
+    // Get.put(HomeController(), permanent: true);
+    // Get.put(ListItemController(), permanent: true);
+    // Get.put(ListEventController(), permanent: true);
   }
 }

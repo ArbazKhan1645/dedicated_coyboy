@@ -1,5 +1,9 @@
 // screens/subscription_management_screen.dart
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
+import 'package:dedicated_cowboy/app/services/stripe_services/payments_coins_controller.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/checkout.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -40,7 +44,7 @@ class _SubscriptionManagementScreenState
           icon: const Icon(Icons.arrow_back, color: Colors.black),
         ),
         title: const Text(
-          'Subscription Management',
+          'Subscriptions',
           style: TextStyle(
             color: Colors.black,
             fontSize: 18,
@@ -50,13 +54,9 @@ class _SubscriptionManagementScreenState
         actions: [
           IconButton(
             onPressed: () {
-           controller.refreshstate(widget.userId);
+              controller.refreshstate(widget.userId);
             },
             icon: const Icon(Icons.refresh, color: Colors.black),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.more_vert, color: Colors.black),
           ),
         ],
       ),
@@ -104,17 +104,31 @@ class _SubscriptionManagementScreenState
                 child: Column(
                   children: [
                     // Current Subscription Status
-                    if (subscriptionProvider.hasActiveSubscription)
-                      _buildCurrentSubscriptionCard(subscriptionProvider),
+                    // if (subscriptionProvider.hasActiveSubscription)
+                    //   _buildCurrentSubscriptionCard(subscriptionProvider),
 
                     // Available Plans
                     ...subscriptionProvider.availablePlans.map(
                       (plan) => _buildSubscriptionCard(
-                        plan,
-                        subscriptionProvider,
-                        isCurrentPlan:
-                            subscriptionProvider.currentSubscription?.plan.id ==
-                            plan.id,
+                        plan.name,
+                        plan.price,
+                        plan.duration.toString(),
+                        plan.description,
+                        plan.features,
+                        isactive:
+                            plan.id ==
+                            subscriptionProvider.currentSubscription?.plan.id,
+                        onContinuePressed:
+                            () => _handleContinuePressed(
+                              plan,
+                              subscriptionProvider,
+                            ),
+                        oncancel:
+                            () => _showCancelDialog(
+                              context,
+                              subscriptionProvider,
+                            ),
+                        isLoading: subscriptionProvider.isLoading,
                       ),
                     ),
 
@@ -213,115 +227,154 @@ class _SubscriptionManagementScreenState
   }
 
   Widget _buildSubscriptionCard(
-    SubscriptionPlan plan,
-    SubscriptionProvider provider, {
-    bool isCurrentPlan = false,
+    String title,
+    double price,
+    String duration,
+    String description,
+    List<String> features, {
+    VoidCallback? onContinuePressed,
+    VoidCallback? oncancel,
+    bool isLoading = false,
+    bool isactive = false,
   }) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        border: Border.all(
-          color:
-              plan.isPopular
-                  ? const Color(0xFFFBB040)
-                  : const Color(0xFF4A5568),
-          width: plan.isPopular ? 2 : 1,
-        ),
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
+          // Header section with title
           Container(
-            decoration: BoxDecoration(
-              color:
-                  plan.isPopular
-                      ? const Color(0xFFFBB040)
-                      : const Color(0xFF4A5568),
-              borderRadius: const BorderRadius.only(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFF4A5568), // Dark blue-gray color
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  plan.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (plan.isPopular) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.star, color: Colors.white, size: 16),
-                ],
-                if (isCurrentPlan) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.check_circle, color: Colors.white, size: 16),
-                ],
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'popins',
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
+
+          // Content section
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                const SizedBox(height: 8),
-                Text(
-                  '\$${plan.price.toStringAsFixed(2)}/${_getPlanDurationText(plan.type)}',
-                  style: const TextStyle(
-                    color: Color(0xFFFBB040),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+                // Price section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '\$',
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      price.toInt().toString(),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '/ $duration',
+                        style: const TextStyle(
+                          color: Color(0xFF9CA3AF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'PER ${plan.type.toString().split('.').last.toUpperCase()}',
+
+                const SizedBox(height: 8),
+
+                // "Per Package" text
+                const Text(
+                  'Per Package',
                   style: TextStyle(
-                    color:
-                        plan.isPopular ? const Color(0xFFFBB040) : Colors.grey,
-                    fontSize: 10,
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  plan.description,
-                  style: const TextStyle(color: Colors.black, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
+
                 const SizedBox(height: 20),
+
+                // Description
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+                Divider(color: Colors.grey.shade300),
+                const SizedBox(height: 12),
+
+                // Features list
                 Column(
                   children:
-                      plan.features
+                      features
                           .map((feature) => _buildFeatureItem(feature))
                           .toList(),
                 ),
-                const SizedBox(height: 20),
-                if (!isCurrentPlan) ...[
+
+                const SizedBox(height: 24),
+
+                if (!isactive)
+                  // Continue button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          provider.isLoading
-                              ? null
-                              : () => _handleContinuePressed(plan, provider),
+                      onPressed: isLoading ? null : onContinuePressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFBB040),
+                        backgroundColor: const Color(
+                          0xFFF2B342,
+                        ), // Orange/yellow color
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child:
-                          provider.isLoading
+                          isLoading
                               ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -334,59 +387,43 @@ class _SubscriptionManagementScreenState
                                 'Continue',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                     ),
                   ),
-                ] else ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.green.shade300),
-                    ),
-                    child: const Text(
-                      'Current Plan',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                if (isCurrentPlan) ...[
+
+                if (isactive)
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        _showCancelDialog(context, provider);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : oncancel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        elevation: 6, // <-- Shadow strength
+                        shadowColor: Colors.black, // <-- Shadow color
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text(
-                        'Cancel Membership',
-                        style: TextStyle(
-                          color: Color(0xFF4A5568),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      child:
+                          isLoading
+                              ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.black,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text(
+                                'Cancel Membership',
+                                style: TextStyle(color: Colors.black),
+                              ),
                     ),
                   ),
-                ],
-                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -397,33 +434,27 @@ class _SubscriptionManagementScreenState
 
   Widget _buildFeatureItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300, width: 1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(
-                color: Color(0xFF364C63),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check, color: Colors.white, size: 10),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(color: Colors.black, fontSize: 13),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+
+            child: const Icon(Icons.check, color: Color(0xFF10B981)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -447,54 +478,64 @@ class _SubscriptionManagementScreenState
     SubscriptionPlan plan,
     SubscriptionProvider provider,
   ) async {
-    // TODO: Integrate with in-app purchase here
-    // For now, we'll simulate the purchase
+    Get.to(
+      () => CheckoutScreen(
+        subscriptionPlan: plan,
+        onCheckout: () async {
+          if (mounted) {
+            final init = await Get.put(
+              PaymentsCoinsController(),
+            ).initPaymentSheet(context, plan.price.toDouble());
+            if (init == false) return;
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder:
+                  (context) => const AlertDialog(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Processing subscription...'),
+                      ],
+                    ),
+                  ),
+            );
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (context) => const AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Processing subscription...'),
-              ],
-            ),
-          ),
+            final success = await provider.purchaseSubscription(
+              userId: widget.userId,
+              plan: plan,
+              transactionId:
+                  'simulated_${DateTime.now().millisecondsSinceEpoch}',
+              metadata: {'platform': 'flutter', 'purchase_method': 'simulated'},
+            );
+
+            if (mounted) {
+              Navigator.of(context).pop(); // Close loading dialog
+
+              if (success) {
+                Navigator.of(context).pop(); // Close loading dialog
+                Navigator.of(context).pop(); // Close loading dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Successfully subscribed to ${plan.name}!'),
+                    backgroundColor: Color(0xFFF2B342),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to subscribe: ${provider.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          }
+        },
+      ),
     );
-
-    // Simulate purchase process
-    await Future.delayed(const Duration(seconds: 2));
-
-    final success = await provider.purchaseSubscription(
-      userId: widget.userId,
-      plan: plan,
-      transactionId: 'simulated_${DateTime.now().millisecondsSinceEpoch}',
-      metadata: {'platform': 'flutter', 'purchase_method': 'simulated'},
-    );
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close loading dialog
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully subscribed to ${plan.name}!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to subscribe: ${provider.error}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   void _showCancelDialog(BuildContext context, SubscriptionProvider provider) {
@@ -502,7 +543,7 @@ class _SubscriptionManagementScreenState
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          insetPadding: const EdgeInsets.all(0),
+          insetPadding: const EdgeInsets.all(10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -512,8 +553,8 @@ class _SubscriptionManagementScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 80,
-                height: 80,
+                width: 120,
+                height: 120,
                 decoration: const BoxDecoration(
                   color: Color(0xFFD1D5DB),
                   shape: BoxShape.circle,
@@ -573,7 +614,7 @@ class _SubscriptionManagementScreenState
                                   : 'Failed to cancel subscription: ${provider.error}',
                             ),
                             backgroundColor:
-                                success ? Colors.green : Colors.red,
+                                success ? Color(0xFFF2B342) : Colors.red,
                           ),
                         );
                       }
@@ -605,7 +646,7 @@ class _SubscriptionManagementScreenState
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -634,6 +675,7 @@ class _SubscriptionManagementScreenState
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ],

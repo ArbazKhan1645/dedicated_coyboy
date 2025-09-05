@@ -2,6 +2,7 @@ import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_no
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // notifications_screen.dart
@@ -103,7 +104,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('All notifications marked as read'),
-              backgroundColor: Colors.green,
+              backgroundColor: Color(0xFFF2B342),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -664,7 +665,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       case 'like':
         return Colors.red;
       case 'comment':
-        return Colors.green;
+        return Color(0xFFF2B342);
       case 'follow':
         return Colors.purple;
       case 'system':
@@ -689,19 +690,15 @@ class ContactUsScreen extends StatelessWidget {
 
   Future<void> _launchPhone(String phoneNumber) async {
     final Uri uri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      throw 'Could not launch phone';
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $uri');
     }
   }
 
   Future<void> _launchEmail(String email) async {
     final Uri uri = Uri(scheme: 'mailto', path: email);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      throw 'Could not launch email';
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $uri');
     }
   }
 
@@ -724,12 +721,6 @@ class ContactUsScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -799,7 +790,7 @@ class ContactUsScreen extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              '1-877-332-3248 ',
+                              '1-877-332-3248 (DC4U)',
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: 14,
@@ -891,8 +882,10 @@ class ContactUsScreen extends StatelessWidget {
                     'Instagram',
                     'dedicatedcowboy',
                     const Color(0xFFE4405F),
-                    Icons.camera_alt,
-                    () => _launchURL('https://instagram.com/dedicatedcowboy'),
+                    FontAwesomeIcons.instagram,
+                    () => _launchURL(
+                      'https://www.instagram.com/dedicatedcowboy/?igsh=MWpqMTEwdTlqanFqYg%3D%3D',
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -900,8 +893,10 @@ class ContactUsScreen extends StatelessWidget {
                     'Facebook',
                     'dedicatedcowboy',
                     const Color(0xFF1877F2),
-                    Icons.facebook,
-                    () => _launchURL('https://facebook.com/dedicatedcowboy'),
+                    FontAwesomeIcons.facebook,
+                    () => _launchURL(
+                      'https://www.facebook.com/people/Dedicated-Cowboy/100090563776256/?mibextid=uzlsIk',
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -909,8 +904,10 @@ class ContactUsScreen extends StatelessWidget {
                     'YouTube',
                     'dedicatedcowboy',
                     const Color(0xFFFF0000),
-                    Icons.play_arrow,
-                    () => _launchURL('https://youtube.com/dedicatedcowboy'),
+                    FontAwesomeIcons.youtube,
+                    () => _launchURL(
+                      'https://www.youtube.com/watch?v=gH3h6Z4XWDE&feature=youtu.be',
+                    ),
                   ),
                 ],
               ),
@@ -938,7 +935,7 @@ class ContactUsScreen extends StatelessWidget {
               color: color,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: FaIcon(icon, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 12),
           Column(

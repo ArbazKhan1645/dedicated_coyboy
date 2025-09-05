@@ -29,7 +29,7 @@ class BusinessPreviewScreen extends StatelessWidget {
           style: Appthemes.textMedium.copyWith(
             fontSize: 18.sp,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: appColors.darkBlueText,
             decoration: TextDecoration.underline,
           ),
         ),
@@ -40,14 +40,14 @@ class BusinessPreviewScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Gallery Section
-            _buildImageGallery(controller),
+            // Media Gallery Section (Images, Videos, Attachments)
+            _buildMediaGallery(controller),
 
             const SizedBox(height: 20),
 
             // Business Name
             _buildInfoText(
-              'Business Name :',
+              'Business Name:',
               controller.businessNameController.text,
             ),
 
@@ -55,40 +55,35 @@ class BusinessPreviewScreen extends StatelessWidget {
 
             // Description
             _buildInfoText(
-              'Description :',
+              'Description:',
               controller.descriptionController.text,
             ),
 
             const SizedBox(height: 16),
 
-            // Business Category
+            // Business Categories
+            _buildCategoriesSection(controller),
+
+            const SizedBox(height: 16),
+
+            // Subcategory (if available)
             _buildInfoText(
-              'Business Category :',
-              controller.selectedBusinessCategory.value,
+              'Subcategory:',
+              controller.selectedSubcategory.value,
             ),
 
             const SizedBox(height: 16),
 
-            // Subcategory - Only show if not empty
-            if (controller.selectedSubcategory.value.isNotEmpty)
-              _buildInfoText(
-                'Subcategory :',
-                controller.selectedSubcategory.value,
-              ),
+            // Website/Online Store
+            _buildInfoText(
+              'Website/Online Store:',
+              controller.websiteController.text,
+            ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Website - Only show if not empty
-            if (controller.websiteController.text.isNotEmpty)
-              _buildInfoText(
-                'Website/Online Store :',
-                controller.websiteController.text,
-              ),
-
-            const SizedBox(height: 16),
-
-            // Address Section
-            _buildAddressSection(controller),
+            // Location Section
+            _buildLocationSection(controller),
 
             const SizedBox(height: 20),
 
@@ -107,19 +102,13 @@ class BusinessPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGallery(ListBusinessController controller) {
+  Widget _buildMediaGallery(ListBusinessController controller) {
     return Obx(() {
-      if (controller.imageUploadStatuses.isNotEmpty) {
-        return Container(
-          height: 300,
-          child:
-              controller.imageUploadStatuses.length == 1
-                  ? _buildSingleImage(controller.imageUploadStatuses.first.file)
-                  : _buildImageGrid(
-                    controller.imageUploadStatuses.map((e) => e.file).toList(),
-                  ),
-        );
-      } else {
+      final hasImages = controller.imageUploadStatuses.isNotEmpty;
+      final hasVideos = controller.videoUploadStatuses.isNotEmpty;
+      final hasAttachments = controller.attachmentUploadStatuses.isNotEmpty;
+
+      if (!hasImages && !hasVideos && !hasAttachments) {
         return Container(
           height: 200,
           decoration: BoxDecoration(
@@ -130,10 +119,10 @@ class BusinessPreviewScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.business, size: 50, color: Colors.grey.shade400),
+                Icon(Icons.image, size: 50, color: Colors.grey.shade400),
                 const SizedBox(height: 8),
                 Text(
-                  'No business images uploaded',
+                  'No media uploaded',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 16.sp,
@@ -144,6 +133,166 @@ class BusinessPreviewScreen extends StatelessWidget {
           ),
         );
       }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Images Section
+          if (hasImages) ...[
+            Text(
+              'Images (${controller.imageUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 300,
+              child:
+                  controller.imageUploadStatuses.length == 1
+                      ? controller.imageUploadStatuses.first.uploadedUrl != null
+                          ? _buildSingleNetworkImage(
+                            controller.imageUploadStatuses.first.uploadedUrl!,
+                          )
+                          : _buildSingleImage(
+                            controller.imageUploadStatuses.first.file,
+                          )
+                      : controller.isEditMode.value
+                      ? _buildImageGridNetwork(
+                        controller.imageUploadStatuses
+                            .map((status) => status.uploadedUrl ?? '')
+                            .toList(),
+                      )
+                      : _buildImageGrid(
+                        controller.imageUploadStatuses
+                            .map((status) => status.file)
+                            .toList(),
+                      ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Videos Section
+          if (hasVideos) ...[
+            Text(
+              'Videos (${controller.videoUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.videoUploadStatuses.length,
+              itemBuilder: (context, index) {
+                final videoFile = controller.videoUploadStatuses[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C3E50),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          videoFile.file.path.split('/').last,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Attachments Section
+          if (hasAttachments) ...[
+            Text(
+              'Attachments (${controller.attachmentUploadStatuses.length})',
+              style: Appthemes.textMedium.copyWith(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.attachmentUploadStatuses.length,
+              itemBuilder: (context, index) {
+                final attachmentFile =
+                    controller.attachmentUploadStatuses[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF2B342),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.description,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          attachmentFile.file.path.split('/').last,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      );
     });
   }
 
@@ -157,6 +306,129 @@ class BusinessPreviewScreen extends StatelessWidget {
         height: double.infinity,
       ),
     );
+  }
+
+  Widget _buildSingleNetworkImage(String image) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        image,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      ),
+    );
+  }
+
+  Widget _buildImageGridNetwork(List<String> images) {
+    if (images.length == 2) {
+      return Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[0],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[1],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+              child: Image.network(
+                images[0],
+                fit: BoxFit.cover,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      images[1],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          images[2],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                      if (images.length > 3)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '+${images.length - 3}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildImageGrid(List<File> images) {
@@ -297,7 +569,70 @@ class BusinessPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressSection(ListBusinessController controller) {
+  Widget _buildCategoriesSection(ListBusinessController controller) {
+    return Obx(() {
+      if (controller.selectedCategories.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Business Categories:',
+            style: Appthemes.textMedium.copyWith(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children:
+                controller.selectedCategories.map((category) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: appColors.pYellow.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: appColors.pYellow, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.business,
+                          color: appColors.pYellow,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: appColors.pYellow,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildLocationSection(ListBusinessController controller) {
+    if (controller.locationController.text.isEmpty)
+      return const SizedBox.shrink();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -310,7 +645,7 @@ class BusinessPreviewScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Address, Location / City & State',
+            'Business Location',
             style: Appthemes.textMedium.copyWith(
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
@@ -318,78 +653,23 @@ class BusinessPreviewScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            controller.locationController.text.isNotEmpty
-                ? controller.locationController.text
-                : 'No address provided',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w400,
-              color:
-                  controller.locationController.text.isNotEmpty
-                      ? Colors.black87
-                      : Colors.grey.shade600,
-            ),
+          Row(
+            children: [
+              Icon(Icons.location_on, color: appColors.pYellow, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  controller.locationController.text,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMapSection() {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
-          children: [
-            // Map placeholder
-            Container(
-              color: Colors.blue.shade100,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 50,
-                      color: Colors.red.shade400,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Business Location',
-                      style: TextStyle(
-                        color: Colors.blue.shade600,
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Location marker
-            Positioned(
-              bottom: 80,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(Icons.location_on, color: Colors.white, size: 24),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -415,72 +695,79 @@ class BusinessPreviewScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          Column(
+            children: [
+              // Email (Required)
+              _buildContactRow(
+                Icons.email_outlined,
+                'Email:',
+                controller.emailController.text.isNotEmpty
+                    ? controller.emailController.text
+                    : 'No email provided',
+                controller.emailController.text.isNotEmpty,
+              ),
 
-          // Email - Always show since it's required
-          _buildContactRow(
-            'Email :',
-            controller.emailController.text.isNotEmpty
-                ? controller.emailController.text
-                : 'No email provided',
-            controller.emailController.text.isNotEmpty,
-          ),
+              // Website/Online Store
+              if (controller.websiteController.text.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildContactRow(
+                  Icons.web,
+                  'Website:',
+                  controller.websiteController.text,
+                  true,
+                ),
+              ],
 
-          // Website - Only show if provided
-          if (controller.websiteController.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _buildContactRow(
-              'Website :',
-              controller.websiteController.text,
-              true,
-            ),
-          ],
+              // Text Number
+              if (controller.textController.text.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildContactRow(
+                  Icons.message_outlined,
+                  'Text Messages:',
+                  controller.textController.text,
+                  true,
+                ),
+              ],
 
-          // Text Number - Show if provided, otherwise show placeholder
-          const SizedBox(height: 8),
-          _buildContactRow(
-            'Phone number for text :',
-            controller.textController.text.isNotEmpty
-                ? controller.textController.text
-                : 'No text number provided',
-            controller.textController.text.isNotEmpty,
-          ),
+              // Call Number
+              if (controller.callController.text.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildContactRow(
+                  Icons.phone_outlined,
+                  'Phone Calls:',
+                  controller.callController.text,
+                  true,
+                ),
+              ],
 
-          // Call Number - Show if provided, otherwise show placeholder
-          const SizedBox(height: 8),
-          _buildContactRow(
-            'Phone number for call :',
-            controller.callController.text.isNotEmpty
-                ? controller.callController.text
-                : 'No call number provided',
-            controller.callController.text.isNotEmpty,
-          ),
-
-          // Facebook/Instagram - Show if provided, otherwise show placeholder
-          const SizedBox(height: 8),
-          _buildContactRow(
-            'Social Media :',
-            controller.facebookInstagramController.text.isNotEmpty
-                ? controller.facebookInstagramController.text
-                : 'No social media provided',
-            controller.facebookInstagramController.text.isNotEmpty,
-          ),
-
-          // Operating Hours - This would need to be added to controller if you want it dynamic
-          const SizedBox(height: 8),
-          _buildContactRow(
-            'Operating Hours :',
-            'Mon-Fri: 9AM-6PM, Sat: 10AM-4PM', // Keep static for now
-            false, // This indicates it's placeholder data
+              // Facebook/Instagram
+              if (controller.facebookInstagramController.text.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildContactRow(
+                  Icons.link,
+                  'Social Media:',
+                  controller.facebookInstagramController.text,
+                  true,
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContactRow(String label, String value, bool hasRealData) {
+  Widget _buildContactRow(
+    IconData icon,
+    String label,
+    String value,
+    bool hasRealData,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Icon(icon, color: appColors.pYellow, size: 18),
+        const SizedBox(width: 12),
         Text(
           label,
           style: TextStyle(
@@ -513,8 +800,8 @@ class BusinessPreviewScreen extends StatelessWidget {
           height: 56,
           child: CustomElevatedButton(
             text: 'Edit Business Listing',
-            backgroundColor: appColors.pYellow,
-            textColor: Colors.white,
+            backgroundColor: Colors.white,
+            textColor: appColors.pYellow,
             fontSize: 18.sp,
             fontWeight: FontWeight.w600,
             borderRadius: 28.r,
@@ -530,7 +817,10 @@ class BusinessPreviewScreen extends StatelessWidget {
           height: 56,
           child: Obx(
             () => CustomElevatedButton(
-              text: 'Publish Business Listing',
+              text:
+                  controller.isEditMode.value
+                      ? 'Update Listing'
+                      : 'Publish Business Listing',
               backgroundColor: appColors.pYellow,
               textColor: Colors.white,
               fontSize: 18.sp,

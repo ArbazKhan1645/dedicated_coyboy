@@ -125,8 +125,7 @@ class SubscriptionStatusWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color:
-              isExpiringSoon ? Colors.orange.shade300 : Colors.green.shade300,
+          color: isExpiringSoon ? Colors.red.shade300 : Color(0xFFF2B342),
         ),
       ),
       child: Padding(
@@ -142,8 +141,8 @@ class SubscriptionStatusWidget extends StatelessWidget {
                       : Icons.check_circle_outlined,
                   color:
                       isExpiringSoon
-                          ? Colors.orange.shade600
-                          : Colors.green.shade600,
+                          ? Colors.red.shade600
+                          : Color(0xFFF2B342).withOpacity(0.60),
                   size: 24,
                 ),
                 const SizedBox(width: 12),
@@ -258,8 +257,8 @@ class CompactSubscriptionStatus extends StatelessWidget {
               color:
                   provider.hasActiveSubscription
                       ? (provider.isExpiringSoon
-                          ? Colors.orange.shade100
-                          : Colors.green.shade100)
+                          ? Colors.red.shade100
+                          : Color(0xFFF2B342).withOpacity(0.10))
                       : Colors.red.shade100,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -276,8 +275,8 @@ class CompactSubscriptionStatus extends StatelessWidget {
                   color:
                       provider.hasActiveSubscription
                           ? (provider.isExpiringSoon
-                              ? Colors.orange.shade700
-                              : Colors.green.shade700)
+                              ? Colors.red.shade700
+                              : Color(0xFFF2B342).withOpacity(0.70))
                           : Colors.red.shade700,
                 ),
                 const SizedBox(width: 4),
@@ -293,8 +292,8 @@ class CompactSubscriptionStatus extends StatelessWidget {
                     color:
                         provider.hasActiveSubscription
                             ? (provider.isExpiringSoon
-                                ? Colors.orange.shade700
-                                : Colors.green.shade700)
+                                ? Colors.red.shade700
+                                : Color(0xFFF2B342).withOpacity(0.70))
                             : Colors.red.shade700,
                   ),
                 ),

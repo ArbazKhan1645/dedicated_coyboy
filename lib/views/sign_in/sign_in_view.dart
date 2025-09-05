@@ -257,7 +257,7 @@ class _SignInViewState extends State<SignInView>
                   child: Text(
                     'Forgot Password?',
                     style: Appthemes.textSmall.copyWith(
-                      color: appColors.pYellow,
+                      color: appColors.darkBlue,
                       fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
                     ),
@@ -283,32 +283,7 @@ class _SignInViewState extends State<SignInView>
                     controller.isLoading.value
                         ? null
                         : controller.signInWithEmailAndPassword,
-                // child: controller.isLoading.value
-                //     ? Row(
-                //         mainAxisAlignment: MainAxisAlignment.center,
-                //         children: [
-                //           SizedBox(
-                //             width: 20,
-                //             height: 20,
-                //             child: CircularProgressIndicator(
-                //               strokeWidth: 2.5,
-                //               valueColor: AlwaysStoppedAnimation<Color>(
-                //                 Colors.white,
-                //               ),
-                //             ),
-                //           ),
-                //           const SizedBox(width: 12),
-                //           Text(
-                //             'Signing In...',
-                //             style: TextStyle(
-                //               color: Colors.white,
-                //               fontSize: 16.sp,
-                //               fontWeight: FontWeight.w600,
-                //             ),
-                //           ),
-                //         ],
-                //       )
-                //     : null,
+         
               ),
             ),
           ),
@@ -333,7 +308,8 @@ class _SignInViewState extends State<SignInView>
                 child: SizedBox(
                   height: 55.h,
                   child: CustomElevatedButton(
-                    imageAsset: 'assets/images/Google__G__logo.svg 1.png',
+                    imageAsset:
+                        'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
                     borderRadius: 25.r,
                     text: 'Google',
                     backgroundColor: appColors.white,
@@ -341,14 +317,15 @@ class _SignInViewState extends State<SignInView>
 
                     isLoading: false,
                     onTap: () {
+                      controller.handleGoogleSignIn();
                       // TODO: Implement Google Sign In
-                      Get.snackbar(
-                        'Coming Soon',
-                        'Google sign-in will be available soon',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: Colors.blue,
-                        colorText: Colors.white,
-                      );
+                      // Get.snackbar(
+                      //   'Coming Soon',
+                      //   'Google sign-in will be available soon',
+                      //   snackPosition: SnackPosition.TOP,
+                      //   backgroundColor: Colors.blue,
+                      //   colorText: Colors.white,
+                      // );
                     },
                   ),
                 ),
@@ -361,22 +338,15 @@ class _SignInViewState extends State<SignInView>
                 child: SizedBox(
                   height: 55.h,
                   child: CustomElevatedButton(
-                    imageAsset:
-                        'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
+                    imageAsset: 'assets/images/Google__G__logo.svg 1.png',
                     borderRadius: 25.r,
                     text: 'Facebook',
                     backgroundColor: appColors.darkBlue,
                     textColor: appColors.white,
                     isLoading: false,
                     onTap: () {
+                      controller.handleFacebookSignIn();
                       // TODO: Implement Facebook Sign In
-                      Get.snackbar(
-                        'Coming Soon',
-                        'Facebook sign-in will be available soon',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: Colors.blue[800]!,
-                        colorText: Colors.white,
-                      );
                     },
                   ),
                 ),

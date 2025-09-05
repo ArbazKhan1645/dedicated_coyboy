@@ -2,13 +2,16 @@
 
 import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
 import 'package:dedicated_cowboy/app/services/listings_service.dart';
-import 'package:dedicated_cowboy/views/home/home_view.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
+import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/listing_item_preview_screen.dart';
 import 'package:dedicated_cowboy/views/my_listings/my_listings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:file_picker/file_picker.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -50,6 +53,112 @@ class ImageUploadStatus {
 }
 
 class ListItemController extends GetxController {
+  final RxBool isEditMode = false.obs;
+  final RxString existingItemId = RxString('');
+  ItemListing? existingItem;
+  void _checkEditMode() {
+    try {
+      final arguments = Get.arguments;
+      if (arguments != null && arguments is ItemListing) {
+        isEditMode.value = true;
+        existingItem = arguments;
+        existingItemId.value = existingItem?.id ?? '';
+        _loadExistingItemData();
+      }
+    } catch (e) {
+      _handleError('Failed to check edit mode', e);
+    }
+  }
+
+  void _loadExistingItemData() {
+    try {
+      if (existingItem == null) return;
+
+      // Populate form fields with existing data
+      itemNameController.text = existingItem!.itemName ?? '';
+      descriptionController.text = existingItem!.description ?? '';
+      locationController.text =
+          existingItem!.cityState.toString().isNotEmpty
+              ? '${existingItem!.latitude},${existingItem!.longitude},${existingItem!.cityState}'
+              : '${existingItem!.latitude},${existingItem!.longitude}';
+      linkWebsiteController.text = existingItem!.linkWebsite ?? '';
+      sizeController.text = existingItem!.sizeDimensions ?? '';
+      brandController.text = existingItem!.brand ?? '';
+      priceController.text = existingItem!.price.toString();
+      shippingController.text = existingItem!.shippingInfo ?? '';
+      emailController.text = existingItem!.email ?? '';
+      paypalController.text = existingItem!.paypalAccount ?? '';
+      otherPaymentController.text = existingItem!.otherPaymentOptions ?? '';
+      facebookController.text = existingItem!.facebookPage ?? '';
+      phoneController.text = existingItem!.phoneNumber ?? '';
+      cashappAccountController.text = existingItem!.cashappAccount ?? '';
+      venmoAccountController.text = existingItem!.venmoAccount ?? '';
+
+      // Set selected values
+      selectedCategories.value = List<String>.from(
+        existingItem!.category ?? [],
+      );
+      selectedCondition.value = existingItem!.condition ?? '';
+      selectedContactMethod.value = existingItem!.preferredContactMethod ?? '';
+      selectedPaymentMethod.value = List<String>.from(
+        existingItem!.paymentMethod ?? [],
+      );
+
+      // Load existing images
+      if ((existingItem!.photoUrls ?? []).isNotEmpty) {
+        for (var url in existingItem!.photoUrls!) {
+          imageUploadStatuses.add(
+            ImageUploadStatus(
+              file: File(''), // Empty file since it's already uploaded
+              isUploading: false,
+              isUploaded: true,
+              uploadedUrl: url,
+            ),
+          );
+        }
+      }
+
+      // Load existing videos
+      if (existingItem!.videoUrls != null &&
+          existingItem!.videoUrls!.isNotEmpty) {
+        for (var url in existingItem!.videoUrls!) {
+          videoUploadStatuses.add(
+            ImageUploadStatus(
+              file: File(''),
+              isUploading: false,
+              isUploaded: true,
+              uploadedUrl: url,
+            ),
+          );
+        }
+      }
+
+      // Load existing attachments
+      if (existingItem!.attachmentUrls != null &&
+          existingItem!.attachmentUrls!.isNotEmpty) {
+        for (var url in existingItem!.attachmentUrls!) {
+          attachmentUploadStatuses.add(
+            ImageUploadStatus(
+              file: File(''),
+              isUploading: false,
+              isUploaded: true,
+              uploadedUrl: url,
+            ),
+          );
+        }
+      }
+
+      update();
+    } catch (e) {
+      _handleError('Failed to load existing item data', e);
+    }
+  }
+
+  final RxList<ImageUploadStatus> videoUploadStatuses =
+      <ImageUploadStatus>[].obs;
+  final RxList<ImageUploadStatus> attachmentUploadStatuses =
+      <ImageUploadStatus>[].obs;
+
   final FirebaseServices _firebaseServices = FirebaseServices();
 
   // Text Controllers
@@ -67,13 +176,17 @@ class ListItemController extends GetxController {
   final TextEditingController otherPaymentController = TextEditingController();
   final TextEditingController facebookController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController cashappAccountController =
+      TextEditingController();
+  final TextEditingController venmoAccountController = TextEditingController();
 
   // Observable variables
-  final RxString selectedCategory = RxString('');
+  // Reactive list of strings
+  final RxList<String> selectedCategories = <String>[].obs;
   final RxString selectedSubcategory = RxString('');
   final RxString selectedCondition = RxString('');
   final RxString selectedContactMethod = RxString('');
-  final RxString selectedPaymentMethod = RxString('');
+  final RxList<String> selectedPaymentMethod = <String>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isAIRewriting = false.obs;
   final RxBool isPublishing = false.obs;
@@ -90,36 +203,34 @@ class ListItemController extends GetxController {
   final ImagePicker _picker = ImagePicker();
 
   // Static data lists
-  final List<String> categories = [
-    'Home and Ranch Decor',
-    'Art',
-    'Decor',
-    'Furniture',
-    'Tack and Livestock',
-    'Horses',
-  ];
+  List<String> categories = [];
 
   final List<String> subcategories = [];
   final List<String> conditions = ['New', 'Used', 'Vintage'];
   final List<String> contactMethods = ['Text', 'Call', 'Messenger', 'Email'];
   final List<String> paymentMethods = [
     'Paypal',
-    'Cash',
+    'CashApp',
     'VENMO',
     'Credit Card',
   ];
 
+  fetchCategories() {
+    var list1 = categoriesStatic['Home & Ranch Decor'] as List<String>;
+    var list2 = categoriesStatic['Tack & Live Stock'] as List<String>;
+    var list3 = categoriesStatic['Western Style'] as List<String>;
+    categories = [...list1, ...list2, ...list3];
+  }
+
   // Getters for better access
-  String? get categoryValue =>
-      selectedCategory.value.isEmpty ? null : selectedCategory.value;
+  List<String>? get categoryValue =>
+      selectedCategories.isEmpty ? null : selectedCategories;
   String? get subcategoryValue =>
       selectedSubcategory.value.isEmpty ? null : selectedSubcategory.value;
   String? get conditionValue =>
       selectedCondition.value.isEmpty ? null : selectedCondition.value;
   String? get contactMethodValue =>
       selectedContactMethod.value.isEmpty ? null : selectedContactMethod.value;
-  String? get paymentMethodValue =>
-      selectedPaymentMethod.value.isEmpty ? null : selectedPaymentMethod.value;
 
   // Check if all images are uploaded
   bool get areAllImagesUploaded => imageUploadStatuses.every(
@@ -133,8 +244,12 @@ class ListItemController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+
+    fetchCategories();
+
     _initializeData();
     _setupConnectivityListener();
+    _checkEditMode();
   }
 
   @override
@@ -181,7 +296,7 @@ class ListItemController extends GetxController {
 
   // Handle connectivity changes
   void _handleConnectivityChange(List<ConnectivityResult> result) {
-    if (result == ConnectivityResult.none) {
+    if (result.contains(ConnectivityResult.none)) {
       _showWarningSnackbar(
         'No internet connection',
         'Please check your network settings',
@@ -216,9 +331,12 @@ class ListItemController extends GetxController {
   }
 
   // Selection methods with error handling
-  void selectCategory(String? category) {
+  void selectCategory(List<String>? category) {
     try {
-      selectedCategory.value = category ?? '';
+      if (category == null) return;
+
+      selectedCategories.value = category.toSet().toList();
+
       selectedSubcategory.value = '';
       update();
     } catch (e) {
@@ -255,10 +373,24 @@ class ListItemController extends GetxController {
 
   void selectPaymentMethod(String? method) {
     try {
-      selectedPaymentMethod.value = method ?? '';
+      if (selectedPaymentMethod.contains(method)) {
+        selectedPaymentMethod.remove(method);
+      } else {
+        selectedPaymentMethod.add(method ?? '');
+      }
+
       update();
     } catch (e) {
       _handleError('Failed to select payment method', e);
+    }
+  }
+
+  removePaymentMethod(String method) {
+    try {
+      selectedPaymentMethod.remove(method);
+      update();
+    } catch (e) {
+      _handleError('Failed to remove payment method', e);
     }
   }
 
@@ -276,7 +408,7 @@ class ListItemController extends GetxController {
   Future<bool> _hasInternetConnection() async {
     try {
       final result = await _connectivity.checkConnectivity();
-      return result != ConnectivityResult.none;
+      return !result.contains(ConnectivityResult.none);
     } catch (e) {
       _handleError('Failed to check internet connection', e);
       return false;
@@ -317,7 +449,7 @@ class ListItemController extends GetxController {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Select Images',
+                'Select Media Type',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -325,33 +457,35 @@ class ListItemController extends GetxController {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Images Section
               Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
                         Get.back();
-                        _pickFromCamera();
+                        _showImageSourceOptions();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7E6),
+                          color: appColors.darkBlue.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFF4A825)),
+                          border: Border.all(color: appColors.darkBlue),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
                             Icon(
-                              Icons.camera_alt,
+                              Icons.image,
                               size: 30,
-                              color: Color(0xFFF4A825),
+                              color: appColors.darkBlue,
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Camera',
+                              'Images',
                               style: TextStyle(
-                                color: Color(0xFF2C3E50),
+                                color: appColors.darkBlue,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -361,31 +495,33 @@ class ListItemController extends GetxController {
                     ),
                   ),
                   const SizedBox(width: 15),
+
+                  // Videos
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
                         Get.back();
-                        _pickFromGallery();
+                        _pickVideos();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEAF4FF),
+                          color: appColors.darkBlue.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF2C3E50)),
+                          border: Border.all(color: appColors.darkBlue),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
                             Icon(
-                              Icons.photo_library,
+                              Icons.videocam,
                               size: 30,
-                              color: Color(0xFF2C3E50),
+                              color: appColors.darkBlue,
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Gallery',
+                              'Videos',
                               style: TextStyle(
-                                color: Color(0xFF2C3E50),
+                                color: appColors.darkBlue,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -396,6 +532,41 @@ class ListItemController extends GetxController {
                   ),
                 ],
               ),
+              const SizedBox(height: 15),
+
+              // Attachments
+              GestureDetector(
+                onTap: () {
+                  Get.back();
+                  _pickAttachments();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: appColors.darkBlue.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: appColors.darkBlue),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(
+                        Icons.attach_file,
+                        size: 30,
+                        color: Color.fromARGB(255, 1, 60, 148),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Documents/Attachments',
+                        style: TextStyle(
+                          color: Color(0xFF2C3E50),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
             ],
           ),
@@ -404,6 +575,289 @@ class ListItemController extends GetxController {
       );
     } catch (e) {
       _handleError('Failed to show upload options', e);
+    }
+  }
+
+  // Show image source options (camera/gallery)
+  Future<void> _showImageSourceOptions() async {
+    await Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Select Image Source',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      _pickFromCamera();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      decoration: BoxDecoration(
+                        color: appColors.darkBlue.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: appColors.darkBlue),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.camera_alt,
+                            size: 30,
+                            color: appColors.darkBlue,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Camera',
+                            style: TextStyle(
+                              color: Color(0xFF2C3E50),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      _pickFromGallery();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      decoration: BoxDecoration(
+                        color: appColors.darkBlue.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF2C3E50)),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.photo_library,
+                            size: 30,
+                            color: appColors.darkBlue,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Gallery',
+                            style: TextStyle(
+                              color: appColors.darkBlue,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  // Pick videos from gallery
+  Future<void> _pickVideos() async {
+    if (videoUploadStatuses.length == 1) {
+      _showErrorSnackbar('Limit Reached', 'Only 1 video allowed to upload');
+      return;
+    }
+    try {
+      if (!await _hasInternetConnection()) {
+        _showErrorSnackbar(
+          'No Internet Connection',
+          'Please connect to internet to upload video',
+        );
+        return;
+      }
+
+      final XFile? video = await _picker
+          .pickVideo(
+            source: ImageSource.gallery,
+            maxDuration: const Duration(
+              minutes: 10,
+            ), // optional: restrict duration
+          )
+          .timeout(
+            const Duration(seconds: 60),
+            onTimeout: () => throw TimeoutException('Video selection timeout'),
+          );
+
+      if (video != null) {
+        final extension = video.path.toLowerCase();
+        if (extension.endsWith('.mp4') ||
+            extension.endsWith('.mov') ||
+            extension.endsWith('.avi') ||
+            extension.endsWith('.mkv')) {
+          _showSuccessSnackbar('Video Selected', 'Uploading selected video...');
+
+          final file = File(video.path);
+          if (await file.exists()) {
+            await _processAndUploadVideo(file);
+          }
+        } else {
+          _showWarningSnackbar('Invalid File', 'Please select a valid video');
+        }
+      } else {
+        _showWarningSnackbar('No Video', 'No video file was selected');
+      }
+    } catch (e) {
+      _handleError('Failed to select video', e);
+    }
+  }
+
+  // Pick attachments/documents
+  Future<void> _pickAttachments() async {
+    try {
+      if (attachmentUploadStatuses.length == 2) {
+        _showErrorSnackbar(
+          'Limit Reached',
+          'Only 2 attachment allowed to upload',
+        );
+        return;
+      }
+      if (!await _hasInternetConnection()) {
+        _showErrorSnackbar(
+          'No Internet Connection',
+          'Please connect to internet to upload attachments',
+        );
+        return;
+      }
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'xlsx', 'xls'],
+        allowMultiple: false,
+      );
+
+      if (result != null) {
+        _showSuccessSnackbar(
+          'Attachments Selected',
+          '${result.files.length} attachment(s) selected. Uploading...',
+        );
+
+        for (PlatformFile attachment in result.files) {
+          final file = File(attachment.path!);
+          if (await file.exists()) {
+            await _processAndUploadAttachment(file);
+          }
+        }
+      }
+    } catch (e) {
+      _handleError('Failed to select attachments', e);
+    }
+  }
+
+  Future<void> _processAndUploadVideo(File file) async {
+    try {
+      final uploadStatus = ImageUploadStatus(file: file, isUploading: true);
+      videoUploadStatuses.add(uploadStatus);
+
+      final index = videoUploadStatuses.length - 1;
+      final uploadedUrl = await _uploadImageWithRetry(file);
+
+      videoUploadStatuses[index] = uploadStatus.copyWith(
+        isUploading: false,
+        isUploaded: true,
+        uploadedUrl: uploadedUrl,
+      );
+
+      _showSuccessSnackbar('Upload Success', 'Video uploaded successfully');
+    } catch (e) {
+      final index = videoUploadStatuses.indexWhere(
+        (status) => status.file.path == file.path,
+      );
+      if (index != -1) {
+        videoUploadStatuses[index] = videoUploadStatuses[index].copyWith(
+          isUploading: false,
+          isUploaded: false,
+          error: e.toString(),
+        );
+      }
+      _handleError('Video upload failed', e);
+    }
+  }
+
+  // Process and upload attachment
+  Future<void> _processAndUploadAttachment(File file) async {
+    try {
+      final uploadStatus = ImageUploadStatus(file: file, isUploading: true);
+      attachmentUploadStatuses.add(uploadStatus);
+
+      final index = attachmentUploadStatuses.length - 1;
+      final uploadedUrl = await _uploadImageWithRetry(file);
+
+      attachmentUploadStatuses[index] = uploadStatus.copyWith(
+        isUploading: false,
+        isUploaded: true,
+        uploadedUrl: uploadedUrl,
+      );
+
+      _showSuccessSnackbar(
+        'Upload Success',
+        'Attachment uploaded successfully',
+      );
+    } catch (e) {
+      final index = attachmentUploadStatuses.indexWhere(
+        (status) => status.file.path == file.path,
+      );
+      if (index != -1) {
+        attachmentUploadStatuses[index] = attachmentUploadStatuses[index]
+            .copyWith(
+              isUploading: false,
+              isUploaded: false,
+              error: e.toString(),
+            );
+      }
+      _handleError('Attachment upload failed', e);
+    }
+  }
+
+  // Remove video
+  void removeVideo(ImageUploadStatus videoStatus) {
+    try {
+      videoUploadStatuses.remove(videoStatus);
+      _showSuccessSnackbar('Video Removed', 'Video removed successfully');
+    } catch (e) {
+      _handleError('Failed to remove video', e);
+    }
+  }
+
+  // Remove attachment
+  void removeAttachment(ImageUploadStatus attachmentStatus) {
+    try {
+      attachmentUploadStatuses.remove(attachmentStatus);
+      _showSuccessSnackbar(
+        'Attachment Removed',
+        'Attachment removed successfully',
+      );
+    } catch (e) {
+      _handleError('Failed to remove attachment', e);
     }
   }
 
@@ -740,7 +1194,7 @@ class ListItemController extends GetxController {
         return false;
       }
 
-      if (selectedCategory.value.isEmpty) {
+      if (selectedCategories.isEmpty) {
         _showValidationError('Please select a category');
         return false;
       }
@@ -807,11 +1261,21 @@ class ListItemController extends GetxController {
     }
   }
 
+  final SubscriptionService _subscriptionService = SubscriptionService();
+
+  Future<bool> checkListingPermission(String userId) async {
+    return await _subscriptionService.canUserList(userId);
+  }
+
   // Publish listing with comprehensive error handling
   Future<void> publishListing() async {
     try {
-      if (isPublishing.value) return;
+      bool pendingPayment = false;
+      var checksub = await checkListingPermission(
+        FirebaseAuth.instance.currentUser!.uid,
+      );
 
+      pendingPayment = checksub;
       isPublishing.value = true;
       isLoading.value = true;
 
@@ -857,54 +1321,110 @@ class ListItemController extends GetxController {
         }
       }
 
-      // Create item listing
-      final newItem = ItemListing(
+      // Create/update item listing
+      final itemData = ItemListing(
+        id:
+            isEditMode.value
+                ? existingItemId.value
+                : null, // Keep existing ID for updates
         latitude: latitude,
         longitude: longitude,
         userId: FirebaseAuth.instance.currentUser?.uid ?? '',
         itemName: itemNameController.text.trim(),
         description: descriptionController.text.trim(),
-        category: selectedCategory.value,
+        category: selectedCategories,
         price: double.tryParse(priceController.text.trim()) ?? 0.0,
         photoUrls: imageUrls,
         condition: selectedCondition.value,
         sizeDimensions: sizeController.text.trim(),
-        isActive: true,
-        createdAt: DateTime.now(),
+        isActive:
+            isEditMode.value
+                ? existingItem!.isActive
+                : false, // Keep existing status
+        createdAt: isEditMode.value ? existingItem!.createdAt : DateTime.now(),
         updatedAt: DateTime.now(),
         linkWebsite: linkWebsiteController.text.trim(),
         brand: brandController.text.trim(),
         shippingInfo: shippingController.text.trim(),
         email: emailController.text.trim(),
         preferredContactMethod: selectedContactMethod.value,
-        paymentMethod: selectedPaymentMethod.value,
+        paymentMethod: selectedPaymentMethod,
         otherPaymentOptions: otherPaymentController.text.trim(),
         cityState: cityState,
+        venmoAccount: venmoAccountController.text.trim(),
+        cashappAccount: cashappAccountController.text.trim(),
+        paypalAccount: paypalController.text.trim(),
+        paymentStatus:
+            isEditMode.value
+                ? existingItem!.paymentStatus
+                : (pendingPayment ? 'paid' : 'pending'),
+        videoUrls:
+            videoUploadStatuses
+                .where(
+                  (status) => status.isUploaded && status.uploadedUrl != null,
+                )
+                .map((status) => status.uploadedUrl!)
+                .toList(),
+        attachmentUrls:
+            attachmentUploadStatuses
+                .where(
+                  (status) => status.isUploaded && status.uploadedUrl != null,
+                )
+                .map((status) => status.uploadedUrl!)
+                .toList(),
       );
 
-      // Create item with timeout
-      final itemId = await _firebaseServices
-          .createItem(newItem)
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () => throw TimeoutException('Publishing timeout'),
-          );
+      String itemId;
 
-      _showSuccessSnackbar('Success!', 'Listing published successfully!');
+      if (isEditMode.value) {
+        // Update existing item
+        await _firebaseServices
+            .updateItem(existingItemId.value, itemData)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () => throw TimeoutException('Update timeout'),
+            );
+
+        _showSuccessSnackbar('Success!', 'Listing updated successfully!');
+      } else {
+        // Create new item
+        itemId = await _firebaseServices
+            .createItem(itemData)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () => throw TimeoutException('Publishing timeout'),
+            );
+
+        _showSuccessSnackbar('Success!', 'Listing published successfully!');
+      }
 
       // Clear form and navigate
       _clearForm();
       Get.until((route) => route.isFirst);
-      Get.to(() => ListingFavoritesScreen());
+
+      if (isEditMode.value || pendingPayment) {
+        Get.to(() => ListingFavoritesScreen());
+      } else {
+        Get.to(
+          () => SubscriptionManagementScreen(
+            userId: FirebaseAuth.instance.currentUser!.uid,
+          ),
+        )?.then((c) {
+          Get.to(() => ListingFavoritesScreen());
+        });
+      }
     } on TimeoutException {
-      _showErrorSnackbar('Timeout', 'Publishing timed out. Please try again.');
+      _showErrorSnackbar('Timeout', 'Operation timed out. Please try again.');
     } on FirebaseException catch (e) {
       _showErrorSnackbar(
         'Database Error',
-        'Failed to save listing: ${e.message ?? 'Unknown error'}',
+        'Failed to ${isEditMode.value ? 'update' : 'save'} listing: ${e.message ?? 'Unknown error'}',
       );
     } catch (e) {
-      _handleError('Failed to publish listing', e);
+      _handleError(
+        'Failed to ${isEditMode.value ? 'update' : 'publish'} listing',
+        e,
+      );
     } finally {
       isPublishing.value = false;
       isLoading.value = false;
@@ -914,53 +1434,41 @@ class ListItemController extends GetxController {
   // Clear form data
   void _clearForm() {
     try {
-      phoneController.clear();
-      facebookController.clear();
-      itemNameController.clear();
-      descriptionController.clear();
-      locationController.clear();
-      linkWebsiteController.clear();
-      sizeController.clear();
-      brandController.clear();
-      priceController.clear();
-      shippingController.clear();
-      emailController.clear();
-      paypalController.clear();
-      otherPaymentController.clear();
-      selectedCategory.value = '';
-      selectedSubcategory.value = '';
-      selectedCondition.value = '';
-      selectedContactMethod.value = '';
-      selectedPaymentMethod.value = '';
+      if (!isEditMode.value) {
+        // Only clear everything if we're not in edit mode
+        phoneController.clear();
+        facebookController.clear();
+        itemNameController.clear();
+        descriptionController.clear();
+        locationController.clear();
+        linkWebsiteController.clear();
+        sizeController.clear();
+        brandController.clear();
+        priceController.clear();
+        shippingController.clear();
+        emailController.clear();
+        paypalController.clear();
+        otherPaymentController.clear();
+        selectedCategories.value = [];
+        selectedSubcategory.value = '';
+        selectedCondition.value = '';
+        selectedContactMethod.value = '';
+        selectedPaymentMethod.value = [];
+      }
+
+      // Always clear media uploads
       imageUploadStatuses.clear();
+      videoUploadStatuses.clear();
+      attachmentUploadStatuses.clear();
+
+      // Reset edit mode if we were in it
+      if (isEditMode.value) {
+        isEditMode.value = false;
+        existingItemId.value = '';
+        existingItem = null;
+      }
     } catch (e) {
       print('Error clearing form: $e');
-    }
-  }
-
-  // Load existing item data with validation
-  void loadItemData(Map<String, dynamic> itemData) {
-    try {
-      itemNameController.text = itemData['itemName']?.toString() ?? '';
-      descriptionController.text = itemData['description']?.toString() ?? '';
-      selectedCategory.value = itemData['category']?.toString() ?? '';
-      selectedSubcategory.value = itemData['subcategory']?.toString() ?? '';
-      locationController.text = itemData['location']?.toString() ?? '';
-      linkWebsiteController.text = itemData['linkWebsite']?.toString() ?? '';
-      sizeController.text = itemData['size']?.toString() ?? '';
-      selectedCondition.value = itemData['condition']?.toString() ?? '';
-      brandController.text = itemData['brand']?.toString() ?? '';
-      priceController.text = itemData['price']?.toString() ?? '';
-      shippingController.text = itemData['shipping']?.toString() ?? '';
-      emailController.text = itemData['email']?.toString() ?? '';
-      selectedContactMethod.value = itemData['contactMethod']?.toString() ?? '';
-      selectedPaymentMethod.value = itemData['paymentMethod']?.toString() ?? '';
-      paypalController.text = itemData['paypal']?.toString() ?? '';
-      otherPaymentController.text = itemData['otherPayment']?.toString() ?? '';
-      phoneController.text = itemData['phone']?.toString() ?? '';
-      facebookController.text = itemData['facebook']?.toString() ?? '';
-    } catch (e) {
-      _handleError('Failed to load item data', e);
     }
   }
 
@@ -975,7 +1483,7 @@ class ListItemController extends GetxController {
       'Validation Error',
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFFF39C12),
+      backgroundColor: const Color(0xFFE74C3C),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(10),
@@ -1003,7 +1511,7 @@ class ListItemController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Color(0xFFF3B340),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(10),
@@ -1017,7 +1525,7 @@ class ListItemController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFFF39C12),
+      backgroundColor: const Color(0xFFE74C3C),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(10),
@@ -1031,7 +1539,7 @@ class ListItemController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFF3498DB),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(10),
@@ -1073,6 +1581,22 @@ class ListItemController extends GetxController {
       _handleError('Navigation error', e);
     }
   }
+
+  bool get areAllMediaUploaded =>
+      imageUploadStatuses.every(
+        (status) => status.isUploaded && status.uploadedUrl != null,
+      ) &&
+      videoUploadStatuses.every(
+        (status) => status.isUploaded && status.uploadedUrl != null,
+      ) &&
+      attachmentUploadStatuses.every(
+        (status) => status.isUploaded && status.uploadedUrl != null,
+      );
+
+  bool get hasUploadingMedia =>
+      imageUploadStatuses.any((status) => status.isUploading) ||
+      videoUploadStatuses.any((status) => status.isUploading) ||
+      attachmentUploadStatuses.any((status) => status.isUploading);
 
   // Utility methods
   String getImageUploadProgress() {
@@ -1179,3 +1703,29 @@ class ListItemController extends GetxController {
     };
   }
 }
+
+final Map<String, List<String>> categoriesStatic = {
+  "Business & Services": [
+    'Business & Services',
+    "Western Retail Shops",
+    "Boutiques",
+    "Ranch Services",
+    "All Other",
+  ],
+  "Home & Ranch Decor": ['Home & Ranch Decor', "Furniture", "Art", "Decor"],
+  "Tack & Live Stock": [
+    "Tack & Live Stock",
+    "Tack",
+    "Horses",
+    "Livestock",
+    "Miscellaneous",
+  ],
+  "Western Life & Events": [
+    'Western Life & Events',
+    "Rodeos",
+    "Barrel Races",
+    "Team Roping",
+    "All Other Events",
+  ],
+  "Western Style": ["Womens", "Mens", "Kids", "Accessories"],
+};

@@ -58,12 +58,14 @@ class FirebaseServices {
   }
 
   /// Update item
-  Future<void> updateItem(String id, ItemListing item) async {
+  Future<bool> updateItem(String id, ItemListing item) async {
     try {
       await _firestore
           .collection(itemsCollection)
           .doc(id)
           .update(item.copyWith(updatedAt: DateTime.now()).toFirestore());
+
+      return true; // Success
     } catch (e) {
       throw Exception('Failed to update item: $e');
     }
@@ -83,8 +85,8 @@ class FirebaseServices {
     return _firestore
         .collection(itemsCollection)
         .where('userId', isEqualTo: userId)
-        .where('isActive', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
+        // .where('isActive', isEqualTo: true)
+        // .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) =>
@@ -95,12 +97,10 @@ class FirebaseServices {
   }
 
   /// Search items by category
-  Stream<List<ItemListing>> getItemsByCategory(String category) {
+  Stream<List<ItemListing>> getItemsByCategory(List<String> category) {
     return _firestore
         .collection(itemsCollection)
-        // .where('category', isEqualTo: category)
-        // .where('isActive', isEqualTo: false)
-        // .orderBy('createdAt', descending: true)
+        .where('isActive', isEqualTo: true)
         .snapshots()
         .map(
           (snapshot) =>
@@ -116,8 +116,22 @@ class FirebaseServices {
                           .trim();
                     }
 
-                    return normalizeCategory(doc.category ?? '') ==
-                        normalizeCategory(category);
+                    final docCategories =
+                        (doc.category ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    final filterCategories =
+                        (category ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    // Check if ANY filter category exists in doc categories
+                    final hasMatch = filterCategories.any(
+                      (c) => docCategories.contains(c),
+                    );
+
+                    return hasMatch;
                   })
                   .toList(),
         );
@@ -211,8 +225,8 @@ class FirebaseServices {
     return _firestore
         .collection(businessesCollection)
         .where('userId', isEqualTo: userId)
-        .where('isActive', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
+        // .where('isActive', isEqualTo: true)
+        // .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) =>
@@ -225,10 +239,9 @@ class FirebaseServices {
   }
 
   /// Search businesses by category
-  Stream<List<BusinessListing>> getBusinessesByCategory(String category) {
+  Stream<List<BusinessListing>> getBusinessesByCategory(List<String> category) {
     return _firestore
         .collection(businessesCollection)
-        .where('businessCategory', isEqualTo: category)
         .where('isActive', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -238,6 +251,33 @@ class FirebaseServices {
                   .map(
                     (doc) => BusinessListing.fromFirestore(doc.data(), doc.id),
                   )
+                  .toList()
+                  .where((doc) {
+                    String normalizeCategory(String input) {
+                      return input
+                          .toLowerCase()
+                          .replaceAll('&', 'and')
+                          .replaceAll(RegExp(r'\s+'), ' ') // normalize spaces
+                          .trim();
+                    }
+
+                    final docCategories =
+                        (doc.businessCategory ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    final filterCategories =
+                        (category ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    // Check if ANY filter category exists in doc categories
+                    final hasMatch = filterCategories.any(
+                      (c) => docCategories.contains(c),
+                    );
+
+                    return hasMatch;
+                  })
                   .toList(),
         );
   }
@@ -354,8 +394,8 @@ class FirebaseServices {
     return _firestore
         .collection(eventsCollection)
         .where('userId', isEqualTo: userId)
-        .where('isActive', isEqualTo: true)
-        .orderBy('eventStartDate', descending: false)
+        // .where('isActive', isEqualTo: true)
+        // .orderBy('eventStartDate', descending: false)
         .snapshots()
         .map(
           (snapshot) =>
@@ -391,18 +431,49 @@ class FirebaseServices {
   }
 
   /// Get events by category
-  Stream<List<EventListing>> getEventsByCategory(String category) {
+  Stream<List<EventListing>> getEventsByCategory(List<String> category) {
     return _firestore
         .collection(eventsCollection)
-        .where('eventCategory', isEqualTo: category)
-        .where('isActive', isEqualTo: true)
-        .where('eventStartDate', isGreaterThan: Timestamp.now())
-        .orderBy('eventStartDate', descending: false)
+        // .where('eventCategory', isEqualTo: category)
+        // .where('isActive', isEqualTo: true)
+        // .where('eventStartDate', isGreaterThan: Timestamp.now())
+        // .orderBy('eventStartDate', descending: false)
         .snapshots()
         .map(
           (snapshot) =>
               snapshot.docs
-                  .map((doc) => EventListing.fromFirestore(doc.data(), doc.id))
+                  .map((doc) {
+                    print(snapshot.docs.length);
+                    return EventListing.fromFirestore(doc.data(), doc.id);
+                  })
+                  .toList()
+                  .where((doc) {
+                    print(doc.eventName);
+                    String normalizeCategory(String input) {
+                      return input
+                          .toLowerCase()
+                          .replaceAll('&', 'and')
+                          .replaceAll(RegExp(r'\s+'), ' ') // normalize spaces
+                          .trim();
+                    }
+
+                    final docCategories =
+                        (doc.eventCategory ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    final filterCategories =
+                        (category ?? [])
+                            .map((c) => normalizeCategory(c.toString()))
+                            .toList();
+
+                    // Check if ANY filter category exists in doc categories
+                    final hasMatch = filterCategories.any(
+                      (c) => docCategories.contains(c),
+                    );
+
+                    return hasMatch;
+                  })
                   .toList(),
         );
   }

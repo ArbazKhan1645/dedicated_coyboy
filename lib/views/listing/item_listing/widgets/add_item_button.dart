@@ -24,7 +24,7 @@ class AddItemButton extends StatelessWidget {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3B340), // Orange color
+                    color: const Color(0xFFF2B342), // Orange color
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
