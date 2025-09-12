@@ -27,9 +27,13 @@ class SignInController extends GetxController {
   final rememberMe = false.obs;
   final isLoading = false.obs;
   final isForgotPasswordLoading = false.obs;
+  final isGoogleLoading = false.obs;
+  final isFacebookLoading = false.obs;
 
   // Services
   late final AuthService _authService;
+  final SocialService _authServiceSocial = SocialService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void onInit() {
@@ -98,9 +102,181 @@ class SignInController extends GetxController {
     return AuthValidator.validatePassword(password);
   }
 
+  // Check if user exists in Firestore and has complete profile
+  Future<Map<String, dynamic>> _checkUserInFirestore(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+
+      if (!doc.exists) {
+        return {'exists': false, 'isComplete': false, 'data': null};
+      }
+
+      final userData = doc.data()!;
+
+      // Check for required fields
+      final bool isComplete =
+          userData.containsKey('email') &&
+          userData.containsKey('displayName') &&
+          userData['email'] != null &&
+          userData['displayName'] != null &&
+          userData['email'].toString().isNotEmpty &&
+          userData['displayName'].toString().isNotEmpty;
+
+      return {'exists': true, 'isComplete': isComplete, 'data': userData};
+    } catch (e) {
+      debugPrint('Error checking user in Firestore: $e');
+      return {'exists': false, 'isComplete': false, 'data': null};
+    }
+  }
+
+  // Create or update user document in Firestore
+  Future<void> _createOrUpdateUserDocument(
+    UserModel user, {
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+    String? facebookPageId,
+  }) async {
+    try {
+      final userData = {
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName ?? '',
+        'photoURL': user.photoURL ?? '',
+        'emailVerified': user.emailVerified,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'firstName': firstName ?? _extractFirstName(user.displayName),
+        'lastName': lastName ?? _extractLastName(user.displayName),
+        'phoneNumber': phoneNumber ?? '',
+        'facebookPageId': facebookPageId ?? '',
+        'signInMethod': 'email', // Will be updated for social sign-ins
+      };
+
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .set(userData, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error creating/updating user document: $e');
+      rethrow;
+    }
+  }
+
+  String _extractFirstName(String? displayName) {
+    if (displayName == null || displayName.isEmpty) return '';
+    final parts = displayName.trim().split(' ');
+    return parts.isNotEmpty ? parts.first : '';
+  }
+
+  String _extractLastName(String? displayName) {
+    if (displayName == null || displayName.isEmpty) return '';
+    final parts = displayName.trim().split(' ');
+    return parts.length > 1 ? parts.sublist(1).join(' ') : '';
+  }
+
+  // Show dialog to collect missing information
+  Future<Map<String, String>?> _showMissingInfoDialog({
+    String? currentDisplayName,
+    String? currentEmail,
+  }) async {
+    final firstNameController = TextEditingController();
+    final lastNameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final facebookPageIdController = TextEditingController();
+
+    // Pre-fill if display name exists
+    if (currentDisplayName != null && currentDisplayName.isNotEmpty) {
+      firstNameController.text = _extractFirstName(currentDisplayName);
+      lastNameController.text = _extractLastName(currentDisplayName);
+    }
+
+    return await Get.dialog<Map<String, String>>(
+      AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Complete Your Profile'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Please provide the following information to complete your account setup:',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: firstNameController,
+                decoration: const InputDecoration(
+                  labelText: 'First Name *',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: lastNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name *',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number *',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: facebookPageIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Facebook Page ID (Optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (firstNameController.text.trim().isEmpty ||
+                  lastNameController.text.trim().isEmpty ||
+                  phoneController.text.trim().isEmpty) {
+                Get.snackbar(
+                  'Error',
+                  'Please fill in all required fields',
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+                return;
+              }
+
+              Get.back(
+                result: {
+                  'firstName': firstNameController.text.trim(),
+                  'lastName': lastNameController.text.trim(),
+                  'phoneNumber': phoneController.text.trim(),
+                  'facebookPageId': facebookPageIdController.text.trim(),
+                },
+              );
+            },
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
   // Sign in with email and password
   Future<void> signInWithEmailAndPassword() async {
-    // Validate form
     if (!formKey.currentState!.validate()) {
       return;
     }
@@ -117,14 +293,22 @@ class SignInController extends GetxController {
         password: password,
       );
 
-      // Check if user exists in Firestore users collection
-      final bool userExistsInFirestore = await _checkUserExistsInFirestore(
-        user.uid,
-      );
+      // Check if user exists in Firestore
+      final userCheck = await _checkUserInFirestore(user.uid);
 
-      if (!userExistsInFirestore) {
-        // User doesn't exist in Firestore - handle this case
-        await _handleMissingUserInFirestore(user);
+      if (!userCheck['exists']) {
+        // User doesn't exist in Firestore - sign them out and show error
+        await _authService.signOut();
+
+        Get.snackbar(
+          'Account Not Found',
+          'Your account was not found in our database. Please contact support or sign up again.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          icon: const Icon(Icons.error, color: Colors.white),
+        );
         return;
       }
 
@@ -157,37 +341,129 @@ class SignInController extends GetxController {
     }
   }
 
-  // Add these helper methods to your controller
-  Future<bool> _checkUserExistsInFirestore(String uid) async {
+  // Google Sign In with improved loading and validation
+  Future<void> handleGoogleSignIn() async {
+    if (isGoogleLoading.value || isLoading.value) return;
+
     try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      return doc.exists;
+      isGoogleLoading.value = true;
+
+      UserCredential? result = await _authServiceSocial.signInWithGoogle();
+
+      if (result != null && result.user != null) {
+        final user = UserModel.fromFirebaseUser(result.user!);
+
+        // Check user in Firestore
+        final userCheck = await _checkUserInFirestore(user.uid);
+
+        if (!userCheck['exists'] || !userCheck['isComplete']) {
+          // Get missing information
+          final missingInfo = await _showMissingInfoDialog(
+            currentDisplayName: user.displayName,
+            currentEmail: user.email,
+          );
+
+          if (missingInfo == null) {
+            // User cancelled, sign them out
+            await _authService.signOut();
+            return;
+          }
+
+          // Create/update user document with complete information
+          await _createOrUpdateUserDocument(
+            user,
+            firstName: missingInfo['firstName'],
+            lastName: missingInfo['lastName'],
+            phoneNumber: missingInfo['phoneNumber'],
+            facebookPageId: missingInfo['facebookPageId'],
+          );
+
+          // Update sign-in method
+          await _firestore.collection('users').doc(user.uid).update({
+            'signInMethod': 'google',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        Get.snackbar(
+          'Success',
+          'Welcome back, ${result.user!.displayName ?? 'User'}!',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+        );
+
+        Get.offAll(() => CustomCurvedNavBar());
+      }
     } catch (e) {
-      return false;
+      _handleGenericError(e);
+    } finally {
+      isGoogleLoading.value = false;
     }
   }
 
-  Future<void> _handleMissingUserInFirestore(UserModel user) async {
+  // Facebook Sign In with improved loading and validation
+  Future<void> handleFacebookSignIn() async {
+    if (isFacebookLoading.value || isLoading.value) return;
+
     try {
-      // Sign out the user since they don't exist in Firestore
-      await _authService.signOut();
+      isFacebookLoading.value = true;
 
-      // Show error message
-      Get.snackbar(
-        'Account Issue',
-        'Your account needs to be set up properly. Please sign up again.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-        icon: const Icon(Icons.error, color: Colors.white),
-      );
+      final result = await _authServiceSocial.signInWithFacebook();
 
-      // Optionally, you can navigate to signup page
-      // Get.offAll(() => SignUpPage());
+      if (result != null && result.user != null) {
+        final user = UserModel.fromFirebaseUser(result.user!);
+
+        // Check user in Firestore
+        final userCheck = await _checkUserInFirestore(user.uid);
+
+        if (!userCheck['exists'] || !userCheck['isComplete']) {
+          // Get missing information
+          final missingInfo = await _showMissingInfoDialog(
+            currentDisplayName: user.displayName,
+            currentEmail: user.email,
+          );
+
+          if (missingInfo == null) {
+            // User cancelled, sign them out
+            await _authService.signOut();
+            return;
+          }
+
+          // Create/update user document with complete information
+          await _createOrUpdateUserDocument(
+            user,
+            firstName: missingInfo['firstName'],
+            lastName: missingInfo['lastName'],
+            phoneNumber: missingInfo['phoneNumber'],
+            facebookPageId: missingInfo['facebookPageId'],
+          );
+
+          // Update sign-in method
+          await _firestore.collection('users').doc(user.uid).update({
+            'signInMethod': 'facebook',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        Get.snackbar(
+          'Success',
+          'Welcome back, ${result.user!.displayName ?? 'User'}!',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+        );
+
+        Get.offAll(() => CustomCurvedNavBar());
+      }
     } catch (e) {
       _handleGenericError(e);
+    } finally {
+      isFacebookLoading.value = false;
     }
   }
 
@@ -206,7 +482,6 @@ class SignInController extends GetxController {
             padding: const EdgeInsets.only(left: 12, right: 12),
             child: Container(
               width: double.infinity,
-
               padding: const EdgeInsets.all(0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
@@ -268,9 +543,7 @@ class SignInController extends GetxController {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFE8A317,
-                              ), // Orange color from image
+                              color: const Color(0xFFE8A317),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: const Icon(
@@ -410,8 +683,9 @@ class SignInController extends GetxController {
         'Invalid Email',
         emailError,
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 4),
         icon: const Icon(Icons.error, color: Colors.white),
       );
       return;
@@ -479,7 +753,7 @@ class SignInController extends GetxController {
       'Sign In Failed',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.red,
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
       duration: const Duration(seconds: 4),
       icon: const Icon(Icons.error, color: Colors.white),
@@ -494,9 +768,9 @@ class SignInController extends GetxController {
       'Error',
       'An unexpected error occurred. Please try again.',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.red,
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
       icon: const Icon(Icons.error, color: Colors.white),
     );
   }
@@ -507,48 +781,5 @@ class SignInController extends GetxController {
     passwordController.value.clear();
     showPassword.value = false;
     rememberMe.value = false;
-  }
-
-  final SocialService _authServiceSocial = SocialService();
-
-  Future<void> handleGoogleSignIn() async {
-    try {
-      UserCredential? result = await _authServiceSocial.signInWithGoogle();
-
-      if (result != null) {
-        Get.snackbar(
-          'Success',
-          'Welcome back , ${result.user!.displayName}!',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
-        );
-        Get.offAll(() => CustomCurvedNavBar());
-      }
-    } catch (e) {
-      _handleGenericError(e);
-    } finally {}
-  }
-
-  Future<void> handleFacebookSignIn() async {
-    try {
-      final result = await _authServiceSocial.signInWithFacebook();
-      if (result != null) {
-        Get.snackbar(
-          'Success',
-          'Welcome back , ${result.user!.displayName}!',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
-        );
-        Get.offAll(() => CustomCurvedNavBar());
-      }
-    } catch (e) {
-      _handleGenericError(e);
-    } finally {}
   }
 }

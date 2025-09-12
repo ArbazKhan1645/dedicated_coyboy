@@ -1,3 +1,4 @@
+// views/sign_up/sign_up_view.dart
 import 'package:dedicated_cowboy/bottombar/bottom_bar_widegt.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/consts/appthemes.dart';
@@ -153,10 +154,11 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'First Name',
-                            hintText: 'First name',
+                            hintText: 'Enter your first name',
                             controller: controller.firstNameController.value,
                             keyboardType: TextInputType.name,
 
+                            prefixIcon: const Icon(Icons.person_outline),
                             validator:
                                 (value) =>
                                     controller.firstNameError.value.isEmpty
@@ -165,6 +167,9 @@ class _SignUpViewState extends State<SignUpView> {
                             onChanged: (value) {
                               if (controller.firstNameError.value.isNotEmpty) {
                                 controller.firstNameError.value = '';
+                              }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
                               }
                             },
                           ),
@@ -175,10 +180,11 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'Last Name',
-                            hintText: 'Last name',
+                            hintText: 'Enter your last name',
                             controller: controller.lastNameController.value,
                             keyboardType: TextInputType.name,
 
+                            prefixIcon: const Icon(Icons.person_outline),
                             validator:
                                 (value) =>
                                     controller.lastNameError.value.isEmpty
@@ -187,6 +193,9 @@ class _SignUpViewState extends State<SignUpView> {
                             onChanged: (value) {
                               if (controller.lastNameError.value.isNotEmpty) {
                                 controller.lastNameError.value = '';
+                              }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
                               }
                             },
                           ),
@@ -197,9 +206,11 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'Email Address',
-                            hintText: 'Enter email address',
+                            hintText: 'Enter your email address',
                             controller: controller.emailController.value,
                             keyboardType: TextInputType.emailAddress,
+
+                            prefixIcon: const Icon(Icons.email_outlined),
                             validator:
                                 (value) =>
                                     controller.emailError.value.isEmpty
@@ -221,13 +232,12 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'Phone Number',
-                            hintText: 'Enter phone number',
+                            hintText: 'Enter your phone number',
                             controller: controller.phoneController.value,
                             keyboardType: TextInputType.phone,
-                            // inputFormatters: [
-                            //   FilteringTextInputFormatter.allow(RegExp(r'[\d\s\-\(\)\+]')),
-                            //   LengthLimitingTextInputFormatter(20),
-                            // ],
+
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            inputFormatters: [PhoneNumberFormatter()],
                             validator:
                                 (value) =>
                                     controller.phoneError.value.isEmpty
@@ -236,6 +246,39 @@ class _SignUpViewState extends State<SignUpView> {
                             onChanged: (value) {
                               if (controller.phoneError.value.isNotEmpty) {
                                 controller.phoneError.value = '';
+                              }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Facebook Page ID Field (Optional)
+                        Obx(
+                          () => CustomTextField(
+                            labelText: 'Facebook Page ID (Optional)',
+                            hintText: 'Enter your Facebook page ID',
+                            controller:
+                                controller.facebookPageIdController.value,
+                            keyboardType: TextInputType.text,
+
+                            prefixIcon: const Icon(Icons.facebook_outlined),
+                            validator:
+                                (value) =>
+                                    controller.facebookPageIdError.value.isEmpty
+                                        ? null
+                                        : controller.facebookPageIdError.value,
+                            onChanged: (value) {
+                              if (controller
+                                  .facebookPageIdError
+                                  .value
+                                  .isNotEmpty) {
+                                controller.facebookPageIdError.value = '';
+                              }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
                               }
                             },
                           ),
@@ -246,11 +289,12 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'Create Password',
-                            hintText: '••••••••',
+                            hintText: 'Create a strong password',
                             isPassword: !controller.isPasswordVisible.value,
-                            // customPasswordIcon: 'assets/images/Group 1000005706.png',
                             controller: controller.passwordController.value,
                             keyboardType: TextInputType.visiblePassword,
+
+                            prefixIcon: const Icon(Icons.lock_outlined),
                             validator:
                                 (value) =>
                                     controller.passwordError.value.isEmpty
@@ -259,6 +303,9 @@ class _SignUpViewState extends State<SignUpView> {
                             onChanged: (value) {
                               if (controller.passwordError.value.isNotEmpty) {
                                 controller.passwordError.value = '';
+                              }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
                               }
                               // Revalidate confirm password when password changes
                               if (controller
@@ -281,8 +328,8 @@ class _SignUpViewState extends State<SignUpView> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 controller.isPasswordVisible.value
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 color: Colors.grey,
                               ),
                               onPressed: controller.togglePasswordVisibility,
@@ -295,13 +342,14 @@ class _SignUpViewState extends State<SignUpView> {
                         Obx(
                           () => CustomTextField(
                             labelText: 'Confirm Password',
-                            hintText: '••••••••',
+                            hintText: 'Confirm your password',
                             isPassword:
                                 !controller.isConfirmPasswordVisible.value,
-
                             controller:
                                 controller.confirmPasswordController.value,
                             keyboardType: TextInputType.visiblePassword,
+
+                            prefixIcon: const Icon(Icons.lock_outlined),
                             validator:
                                 (value) =>
                                     controller
@@ -317,6 +365,9 @@ class _SignUpViewState extends State<SignUpView> {
                                   .isNotEmpty) {
                                 controller.confirmPasswordError.value = '';
                               }
+                              if (controller.generalError.value.isNotEmpty) {
+                                controller.generalError.value = '';
+                              }
                               // Real-time password match validation
                               if (value !=
                                   controller.passwordController.value.text) {
@@ -329,8 +380,8 @@ class _SignUpViewState extends State<SignUpView> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 controller.isConfirmPasswordVisible.value
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 color: Colors.grey,
                               ),
                               onPressed:
@@ -339,8 +390,6 @@ class _SignUpViewState extends State<SignUpView> {
                           ),
                         ),
                         const SizedBox(height: 30),
-
-                     
 
                         // JOIN Button
                         Obx(
@@ -357,32 +406,6 @@ class _SignUpViewState extends State<SignUpView> {
                                   controller.isLoading.value
                                       ? null
                                       : controller.signUp,
-                              // child: controller.isLoading.value
-                              //     ? Row(
-                              //         mainAxisAlignment: MainAxisAlignment.center,
-                              //         children: [
-                              //           SizedBox(
-                              //             width: 20,
-                              //             height: 20,
-                              //             child: CircularProgressIndicator(
-                              //               strokeWidth: 2,
-                              //               valueColor: AlwaysStoppedAnimation<Color>(
-                              //                 appColors.white,
-                              //               ),
-                              //             ),
-                              //           ),
-                              //           const SizedBox(width: 12),
-                              //           Text(
-                              //             'Creating Account...',
-                              //             style: TextStyle(
-                              //               color: appColors.white,
-                              //               fontSize: 16,
-                              //               fontWeight: FontWeight.w600,
-                              //             ),
-                              //           ),
-                              //         ],
-                              //       )
-                              //     : null,
                             ),
                           ),
                         ),

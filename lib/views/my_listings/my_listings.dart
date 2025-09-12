@@ -116,9 +116,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
         Get.snackbar(
           'Location Error',
           'Location services are disabled.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+     snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
         );
         setState(() {
           _selectedLocation = 'All';
@@ -135,9 +136,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
           Get.snackbar(
             'Location Error',
             'Location permissions are denied',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
+    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
           );
           setState(() {
             _selectedLocation = 'All';
@@ -152,9 +154,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
         Get.snackbar(
           'Location Error',
           'Location permissions are permanently denied, we cannot request permissions.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
         );
         setState(() {
           _selectedLocation = 'All';
@@ -178,9 +181,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
       Get.snackbar(
         'Location Error',
         'Failed to get location: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
       setState(() {
         _selectedLocation = 'All';
@@ -926,8 +930,8 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
       Get.snackbar(
         'Removed',
         '${item.listingName} removed from favorites',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -961,9 +965,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
         Get.snackbar(
           'Cleared',
           'All favorites have been removed',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
         );
       }
     }

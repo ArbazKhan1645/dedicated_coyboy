@@ -73,7 +73,7 @@ class UserModel {
   factory UserModel.fromFirebaseUser(User firebaseUser) {
     return UserModel(
       uid: firebaseUser.uid,
-      email: firebaseUser.email!,
+      email: firebaseUser.email ?? '',
       displayName: firebaseUser.displayName,
       photoURL: firebaseUser.photoURL,
       emailVerified: firebaseUser.emailVerified,

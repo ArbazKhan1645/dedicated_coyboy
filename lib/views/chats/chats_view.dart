@@ -6,6 +6,7 @@ import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/views/chats/controller.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -693,7 +694,7 @@ class ChatMessageScreen extends StatelessWidget {
     if (isMe) {
       return message.status == MessageStatus.failed
           ? Colors.red[100]!
-          : const Color(0xFF364C63);
+          : Color(0xffF4F3EF);
     }
 
     return Colors.white;
@@ -708,9 +709,9 @@ class ChatMessageScreen extends StatelessWidget {
           Icon(Icons.block, size: 16, color: Colors.grey[600]),
           const SizedBox(width: 4),
           Text(
-            message.deletedBy == message.senderId
+            message.deletedBy != FirebaseAuth.instance.currentUser?.uid
                 ? 'This message was deleted'
-                : 'You deleted this message',
+                : 'deleted this message',
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey[600],
@@ -740,7 +741,7 @@ class ChatMessageScreen extends StatelessWidget {
                 isMe
                     ? (message.status == MessageStatus.failed
                         ? Colors.red[800]
-                        : Colors.white)
+                        : Colors.black)
                     : Colors.black87,
             height: 1.3,
           ),
@@ -1209,7 +1210,14 @@ class ChatMessageScreen extends StatelessWidget {
         );
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to capture image');
+      Get.snackbar(
+        'Error',
+        'Failed to capture image',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
     }
   }
 

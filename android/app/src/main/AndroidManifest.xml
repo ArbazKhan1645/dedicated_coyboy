@@ -75,6 +75,22 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="dedicated-cowboy" android:host="stripe-redirect" />
             </intent-filter>
+            
+            <!-- NEW: Deep Link for your website domain -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="dedicatedcowboy.com" />
+            </intent-filter>
+            
+            <!-- NEW: Deep Link for custom scheme (for app-to-app communication) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dedicatedcowboy" />
+            </intent-filter>
         </activity>
 
         <!-- Facebook Configuration -->

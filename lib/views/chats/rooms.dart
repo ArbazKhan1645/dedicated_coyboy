@@ -54,7 +54,10 @@ class ChatRoomsController extends GetxController {
           },
           onError: (error) {
             isLoading.value = false;
-            Get.snackbar('Error', 'Failed to load chats');
+            Get.snackbar('Error', 'Failed to load chats',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
           },
         );
   }
@@ -143,7 +146,10 @@ class ChatRoomsController extends GetxController {
         },
       );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to create chat');
+      Get.snackbar('Error', 'Failed to create chat',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     }
   }
 

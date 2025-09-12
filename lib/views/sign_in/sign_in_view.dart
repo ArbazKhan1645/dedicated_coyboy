@@ -283,7 +283,6 @@ class _SignInViewState extends State<SignInView>
                     controller.isLoading.value
                         ? null
                         : controller.signInWithEmailAndPassword,
-         
               ),
             ),
           ),
@@ -307,26 +306,22 @@ class _SignInViewState extends State<SignInView>
               Expanded(
                 child: SizedBox(
                   height: 55.h,
-                  child: CustomElevatedButton(
-                    imageAsset:
-                        'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
-                    borderRadius: 25.r,
-                    text: 'Google',
-                    backgroundColor: appColors.white,
-                    textColor: appColors.black,
-
-                    isLoading: false,
-                    onTap: () {
-                      controller.handleGoogleSignIn();
-                      // TODO: Implement Google Sign In
-                      // Get.snackbar(
-                      //   'Coming Soon',
-                      //   'Google sign-in will be available soon',
-                      //   snackPosition: SnackPosition.TOP,
-                      //   backgroundColor: Colors.blue,
-                      //   colorText: Colors.white,
-                      // );
-                    },
+                  child: Obx(
+                    () => CustomElevatedButton(
+                      imageAsset:
+                          'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
+                      borderRadius: 25.r,
+                      text: controller.isGoogleLoading.value ? '' : 'Google',
+                      backgroundColor: appColors.white,
+                      textColor: appColors.black,
+                      isLoading: controller.isGoogleLoading.value,
+                      onTap:
+                          controller.isGoogleLoading.value ||
+                                  controller.isLoading.value ||
+                                  controller.isFacebookLoading.value
+                              ? null
+                              : controller.handleGoogleSignIn,
+                    ),
                   ),
                 ),
               ),
@@ -337,17 +332,22 @@ class _SignInViewState extends State<SignInView>
               Expanded(
                 child: SizedBox(
                   height: 55.h,
-                  child: CustomElevatedButton(
-                    imageAsset: 'assets/images/Google__G__logo.svg 1.png',
-                    borderRadius: 25.r,
-                    text: 'Facebook',
-                    backgroundColor: appColors.darkBlue,
-                    textColor: appColors.white,
-                    isLoading: false,
-                    onTap: () {
-                      controller.handleFacebookSignIn();
-                      // TODO: Implement Facebook Sign In
-                    },
+                  child: Obx(
+                    () => CustomElevatedButton(
+                      imageAsset: 'assets/images/Google__G__logo.svg 1.png',
+                      borderRadius: 25.r,
+                      text:
+                          controller.isFacebookLoading.value ? '' : 'Facebook',
+                      backgroundColor: appColors.darkBlue,
+                      textColor: appColors.white,
+                      isLoading: controller.isFacebookLoading.value,
+                      onTap:
+                          controller.isFacebookLoading.value ||
+                                  controller.isLoading.value ||
+                                  controller.isGoogleLoading.value
+                              ? null
+                              : controller.handleFacebookSignIn,
+                    ),
                   ),
                 ),
               ),

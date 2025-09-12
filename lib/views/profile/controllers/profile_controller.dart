@@ -189,8 +189,10 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Error',
         'Failed to load profile data',
-        backgroundColor: Colors.red,
+    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
     } finally {
       isLoadingProfile.value = false;
@@ -300,8 +302,10 @@ class ProfileController extends GetxController {
         Get.snackbar(
           'Success',
           'Profile picture updated successfully',
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
         );
       }
     } catch (e) {
@@ -309,8 +313,10 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Error',
         'Failed to update profile picture',
-        backgroundColor: Colors.red,
+      snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
     } finally {
       isUploadingImage.value = false;
@@ -397,16 +403,20 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Success',
         'Profile updated successfully',
+      snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
     } catch (e) {
       print('Error saving profile: $e');
       Get.snackbar(
         'Error',
         e.toString().replaceAll('Exception: ', ''),
-        backgroundColor: Colors.red,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
     } finally {
       isSaving.value = false;
@@ -456,8 +466,10 @@ class ProfileController extends GetxController {
       Get.snackbar(
         'Success',
         'Password updated successfully',
+    snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
+        duration: const Duration(seconds: 2),
       );
     } catch (e) {
       print('Error changing password: $e');

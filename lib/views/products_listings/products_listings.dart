@@ -2012,27 +2012,30 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                           Get.snackbar(
                             'Error',
                             'Firebase error: ${e.message ?? 'Unknown error'}',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+               snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } on Exception catch (e) {
                           Get.back();
                           Get.snackbar(
                             'Error',
                             e.toString(),
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+              snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } catch (e) {
                           Get.back();
                           Get.snackbar(
                             'Error',
                             'An unexpected error occurred',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         }
                       },
@@ -2731,27 +2734,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           Get.snackbar(
                             'Error',
                             'Firebase error: ${e.message ?? 'Unknown error'}',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } on Exception catch (e) {
                           Get.back();
                           Get.snackbar(
                             'Error',
                             e.toString(),
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                      snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } catch (e) {
                           Get.back();
                           Get.snackbar(
                             'Error',
                             'An unexpected error occurred',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                          snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         }
                       },
@@ -3610,27 +3616,30 @@ class _ItemProductDetailScreenState extends State<ItemProductDetailScreen> {
                           Get.snackbar(
                             'Error',
                             'Firebase error: ${e.message ?? 'Unknown error'}',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                          snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } on Exception catch (e) {
                           Get.back(); // Close loading
                           Get.snackbar(
                             'Error',
                             e.toString(),
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                           snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                         } catch (e) {
                           Get.back(); // Close loading
                           Get.snackbar(
                             'Error',
                             'An unexpected error occurred',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
                           );
                           debugPrint('Unexpected error: $e');
                         }

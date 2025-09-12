@@ -178,6 +178,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     // Navigate based on notification type
     switch (notification.type) {
       case 'message':
+        if (notification.data?['chatRoomId'] != null) {
+          Get.to(
+            () => const ChatMessageScreen(),
+            arguments: {
+              'chatRoomId': notification.data?['chatRoomId'] ?? '',
+              'currentUserId': FirebaseAuth.instance.currentUser!.uid,
+              'otherUserId': notification.senderId,
+            },
+          );
+        }
       case 'chat':
         if (notification.data?['chatRoomId'] != null) {
           Get.to(
@@ -185,7 +195,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             arguments: {
               'chatRoomId': notification.data?['chatRoomId'] ?? '',
               'currentUserId': FirebaseAuth.instance.currentUser!.uid,
-              'otherUserId': notification.receiverId,
+              'otherUserId': notification.senderId,
             },
           );
         }
@@ -278,7 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   await _refreshNotifications();
                   break;
                 case 'cleanup':
-                  await _notificationService.cleanupDuplicateNotifications();
+                  await _notificationService.clearAllNotifications();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Notifications cleaned up')),

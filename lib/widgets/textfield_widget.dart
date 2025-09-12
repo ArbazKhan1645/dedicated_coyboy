@@ -146,7 +146,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
             contentPadding:
                 widget.contentPadding ??
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-            // prefixIcon: widget.prefixIcon, // ✅ Uncommented this line
+            prefixIcon:
+                widget.labelText == 'Price'
+                    ? widget.prefixIcon
+                    : null, // ✅ Uncommented this line,
             suffixIcon: _buildSuffixIcon(),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(widget.borderRadius),

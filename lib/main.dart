@@ -46,6 +46,13 @@ Future<void> main() async {
 
   await Get.putAsync(() => ai_chat_service.init());
 
+  // await EmailTemplates.sendListingUnderReviewEmail(
+  //   recipientEmail: 'shahlili1645@gmail.com',
+  //   recipientName: 'Shah Lili',
+  //   listingTitle: 'Testing Laptop Arbaz',
+  //   listingUrl: 'https://dedicatedcowboy.com/Testing Laptop Arbaz',
+  // );
+
   // final userStatusService = UserStatusService();
   // userStatusService.init();
 

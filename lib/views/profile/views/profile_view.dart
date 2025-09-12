@@ -387,8 +387,10 @@ class ProfileScreen extends StatelessWidget {
     Get.snackbar(
       'Opening',
       url,
-      backgroundColor: Color(0xFFF2B342),
-      colorText: Colors.white,
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
     );
   }
 

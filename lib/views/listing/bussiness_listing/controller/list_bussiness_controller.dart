@@ -2,6 +2,7 @@
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
+import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -1335,6 +1336,25 @@ class ListBusinessController extends GetxController {
       if (pendingPayment || isEditMode.value) {
         Get.to(() => ListingFavoritesScreen());
       } else {
+        try {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null && user.email != null && user.displayName != null) {
+            await EmailTemplates.sendListingUnderReviewEmail(
+              recipientEmail: user.email!,
+              recipientName: user.displayName ?? 'Dear Customer',
+              listingTitle: businessNameController.text.trim(),
+              listingUrl:
+                  'https://dedicatedcowboy.com/listing/${businessNameController.text}',
+            );
+          } else {
+            debugPrint(
+              "Skipped sending subscription welcome email: user/email/displayName is null",
+            );
+          }
+        } catch (e, s) {
+          debugPrint("Error sending subscription welcome email: $e");
+          debugPrintStack(stackTrace: s);
+        }
         Get.to(
           () => SubscriptionManagementScreen(
             userId: FirebaseAuth.instance.currentUser!.uid,
@@ -1414,9 +1434,9 @@ class ListBusinessController extends GetxController {
       'Validation Error',
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFFE74C3C),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(10),
       borderRadius: 8,
       icon: const Icon(Icons.warning, color: Colors.white),
@@ -1428,9 +1448,9 @@ class ListBusinessController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFFE74C3C),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(10),
       borderRadius: 8,
       icon: const Icon(Icons.error, color: Colors.white),
@@ -1444,7 +1464,7 @@ class ListBusinessController extends GetxController {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(10),
       borderRadius: 8,
       icon: const Icon(Icons.check_circle, color: Colors.white),
@@ -1456,9 +1476,9 @@ class ListBusinessController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: const Color(0xFFE74C3C),
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(10),
       borderRadius: 8,
       icon: const Icon(Icons.warning, color: Colors.white),
@@ -1472,7 +1492,7 @@ class ListBusinessController extends GetxController {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(10),
       borderRadius: 8,
       icon: const Icon(Icons.info, color: Colors.white),

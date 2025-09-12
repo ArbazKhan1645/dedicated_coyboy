@@ -81,10 +81,10 @@ class _ReportListingScreenState extends State<ReportListingScreen> {
     Get.snackbar(
       'Error',
       message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: Duration(seconds: 3),
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
     );
   }
 
@@ -92,10 +92,10 @@ class _ReportListingScreenState extends State<ReportListingScreen> {
     Get.snackbar(
       'Success',
       message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Color(0xFFF2B342),
-      colorText: Colors.white,
-      duration: Duration(seconds: 3),
+   snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
     );
   }
 

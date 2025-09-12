@@ -80,11 +80,25 @@ class ChatController extends GetxController {
               _scrollToBottom();
             },
             onError: (error) {
-              Get.snackbar('Error', 'Failed to load messages');
+              Get.snackbar(
+                'Error',
+                'Failed to load messages',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Color(0xFFF2B342),
+                colorText: Colors.white,
+                duration: const Duration(seconds: 4),
+              );
             },
           );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to initialize chat');
+      Get.snackbar(
+        'Error',
+        'Failed to initialize chat',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -194,7 +208,14 @@ class ChatController extends GetxController {
         );
       }
 
-      Get.snackbar('Error', 'Failed to send message');
+      Get.snackbar(
+        'Error',
+        'Failed to send message',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
     }
   }
 
@@ -214,7 +235,7 @@ class ChatController extends GetxController {
         'Success',
         'Chat cleared successfully',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342).withOpacity(0.8),
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -224,7 +245,7 @@ class ChatController extends GetxController {
         'Error',
         'Failed to clear chat',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -271,7 +292,10 @@ class ChatController extends GetxController {
       }
       print(e.toString());
 
-      Get.snackbar('Error', 'Failed to send image $e');
+      Get.snackbar('Error', 'Failed to send image $e',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     }
   }
 
@@ -352,9 +376,15 @@ class ChatController extends GetxController {
         userId: currentUserId,
       );
 
-      Get.snackbar('Success', 'Message deleted');
+      Get.snackbar('Success', 'Message deleted',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete message');
+      Get.snackbar('Error', 'Failed to delete message',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     }
   }
 
@@ -365,9 +395,15 @@ class ChatController extends GetxController {
         messageId: message.id,
       );
 
-      Get.snackbar('Success', 'Message deleted for everyone');
+      Get.snackbar('Success', 'Message deleted for everyone',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete message');
+      Get.snackbar('Error', 'Failed to delete message',    snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Color(0xFFF2B342),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),);
     }
   }
 

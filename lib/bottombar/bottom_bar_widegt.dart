@@ -8,6 +8,7 @@ import 'package:dedicated_cowboy/views/chats/rooms.dart';
 import 'package:dedicated_cowboy/views/explore/explore.dart';
 import 'package:dedicated_cowboy/views/home/home_view.dart';
 import 'package:dedicated_cowboy/views/profile/views/profile_view.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -134,9 +135,40 @@ class NavController extends GetxController {
       FirebaseNotificationService();
   Future<void> _initializeNotificationService() async {
     try {
-      await NotificationService().initialize();
-      await SubscriptionService().initializeSubscriptionPlans();
-      await _notificationService.initialize();
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await SubscriptionService().initializeAndUpdatePaymentStatus(
+            user.uid,
+          );
+        } else {
+          debugPrint("Skipped initializeAndUpdatePaymentStatus: user is null");
+        }
+      } catch (e, s) {
+        debugPrint("Error in initializeAndUpdatePaymentStatus: $e");
+        debugPrintStack(stackTrace: s);
+      }
+
+      try {
+        await NotificationService().initialize();
+      } catch (e, s) {
+        debugPrint("Error in NotificationService.initialize: $e");
+        debugPrintStack(stackTrace: s);
+      }
+
+      try {
+        await SubscriptionService().initializeSubscriptionPlans();
+      } catch (e, s) {
+        debugPrint("Error in initializeSubscriptionPlans: $e");
+        debugPrintStack(stackTrace: s);
+      }
+
+      try {
+        await _notificationService.initialize();
+      } catch (e, s) {
+        debugPrint("Error in _notificationService.initialize: $e");
+        debugPrintStack(stackTrace: s);
+      }
     } catch (e) {
       print('Error initializing notification service: $e');
     }

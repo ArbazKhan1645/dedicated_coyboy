@@ -541,9 +541,9 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       'Location Error',
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
+      backgroundColor: Color(0xFFF2B342),
       colorText: Colors.white,
-      duration: Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
   }
 

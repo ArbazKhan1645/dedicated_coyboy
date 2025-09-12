@@ -109,12 +109,7 @@ class ListingGuardService {
   }
 
   /// Show subscription requirement dialog
-  Future<void> showSubscriptionRequiredDialog(Function() onSubscribePressed) async {
-    // This would typically show a dialog in your UI
-    // For now, we'll just print the message
-    print('Subscription required to create listings');
-    // You can implement this in your UI layer
-  }
+
 
   /// Middleware function to wrap listing creation
   Future<T?> guardedListingAction<T>({
@@ -122,7 +117,7 @@ class ListingGuardService {
     required Future<T> Function() listingAction,
     required Function() onSubscriptionRequired,
   }) async {
-    final permission = await checkListingPermission(userId);
+    final permission = await checkListingPermission(userId); 
     
     if (!permission.canList) {
       onSubscriptionRequired();

@@ -777,8 +777,10 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                           Get.snackbar(
                             'Success',
                             'Password has been reset successfully!',
-                            backgroundColor: appColors.grey,
-                            colorText: appColors.white,
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Color(0xFFF2B342),
+                            colorText: Colors.white,
+                            duration: const Duration(seconds: 2),
                           );
                         }
                         : null;
