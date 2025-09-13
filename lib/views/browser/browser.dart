@@ -8,18 +8,17 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 
-// Import your existing components from product listing screen
-import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
-import 'package:dedicated_cowboy/app/services/listings_service.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/business_model.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/event_model.dart';
+// Import your new unified models and services
+import 'package:dedicated_cowboy/views/word_listings/model.dart';
+import 'package:dedicated_cowboy/views/word_listings/service.dart';
+import 'package:dedicated_cowboy/views/word_listings/widgets.dart';
+import 'package:dedicated_cowboy/views/products_listings/listing_location.dart';
 import 'package:shimmer/shimmer.dart';
-
 
 class BrowseFilterScreen extends StatefulWidget {
   final Map<String, dynamic>? initialFilters;
   final bool mainRoute;
+  
   const BrowseFilterScreen({
     super.key,
     this.initialFilters,
@@ -59,8 +58,10 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   // Listings related variables
-  final FirebaseServices _firebaseServices = FirebaseServices();
-  Stream<List<ListingWrapper>>? _listingsStream;
+  final WordPressListingService _listingService = WordPressListingService();
+  List<UnifiedListing> _allListings = [];
+  List<UnifiedListing> _filteredListings = [];
+  bool isLoadingListings = false;
   String sortBy = 'Featured';
   String searchQuery = '';
 
@@ -74,7 +75,6 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
     'All',
     'Western Style',
     'Home & Ranch Decor',
-    'Tack & Live Stock',
     'Western Life & Events',
     'Business & Services',
   ];
@@ -88,6 +88,7 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
     '1000 miles',
   ];
 
+  // Updated category structure with IDs
   static const Map<String, List<String>> categoriesStatic = {
     "Business & Services": [
       'Business & Services',
@@ -97,13 +98,6 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       "All Other",
     ],
     "Home & Ranch Decor": ['Home & Ranch Decor', "Furniture", "Art", "Decor"],
-    "Tack & Live Stock": [
-      "Tack & Live Stock",
-      "Tack",
-      "Horses",
-      "Livestock",
-      "Miscellaneous",
-    ],
     "Western Life & Events": [
       'Western Life & Events',
       "Rodeos",
@@ -111,7 +105,53 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       "Team Roping",
       "All Other Events",
     ],
-    "Western Style": ["Womens", "Mens", "Kids", "Accessories"],
+    "Western Style": ["Western Style", "Women", "Men", "Kids", "Accessories"],
+  };
+
+  static const Map<String, Map<String, dynamic>> categoriesStaticNumber = {
+    "Business & Services": {
+      "id": 310,
+      "parent": 0,
+      "name": "Business & Services",
+      "children": [
+        {"name": "Business & Services", "id": 310, "parent": 0},
+        {"name": "Boutiques", "id": 350, "parent": 310},
+        {"name": "All Other", "id": 352, "parent": 310},
+      ],
+    },
+    "Home & Ranch Decor": {
+      "id": 290,
+      "parent": 0,
+      "name": "Home & Ranch Decor",
+      "children": [
+        {"name": "Home & Ranch Decor", "id": 290, "parent": 0},
+        {"name": "Furniture", "id": 338, "parent": 290},
+        {"name": "Art", "id": 339, "parent": 290},
+        {"name": "Decor", "id": 340, "parent": 290},
+      ],
+    },
+    "Western Life & Events": {
+      "id": 303,
+      "parent": 0,
+      "name": "Western Life & Events",
+      "children": [
+        {"name": "Western Life & Events", "id": 303, "parent": 0},
+        {"name": "Barrel Races", "id": 346, "parent": 303},
+        {"name": "All Other Events", "id": 348, "parent": 303},
+      ],
+    },
+    "Western Style": {
+      "id": 284,
+      "parent": 0,
+      "name": "Western Style",
+      "children": [
+        {"name": "Western Style", "id": 284, "parent": 0},
+        {"name": "Women", "id": 401, "parent": 284},
+        {"name": "Men", "id": 402, "parent": 284},
+        {"name": "Kids", "id": 403, "parent": 284},
+        {"name": "Accessories", "id": 337, "parent": 284},
+      ],
+    },
   };
 
   @override
@@ -119,263 +159,7 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
     super.initState();
     _initializeWithExistingFilters();
     _setupFocusListener();
-    _initializeListingsStream();
-  }
-
-  void _initializeListingsStream() {
-    if (selectedMainCategory == 'All') {
-      _listingsStream = _getCombinedListingsStream(selectedListingType);
-    } else {
-      List<String> categories =
-          selectedSubCategory == 'All'
-              ? (categoriesStatic[selectedMainCategory] ?? [])
-              : [selectedSubCategory];
-      _listingsStream = _getCombinedListingsByCategoryStream(
-        categories,
-        selectedListingType,
-      );
-    }
-  }
-
-  Stream<List<ListingWrapper>> _getCombinedListingsStream(String listingType) {
-    List<Stream<List<ListingWrapper>>> streams = [];
-
-    if (listingType == 'All' || listingType == 'Item') {
-      streams.add(
-        _firebaseServices.getAllItems().map(
-          (items) => items.map((item) => ListingWrapper(item, 'Item')).toList(),
-        ),
-      );
-    }
-
-    if (listingType == 'All' || listingType == 'Business') {
-      streams.add(
-        _firebaseServices.getAllBusinesses().map(
-          (businesses) =>
-              businesses
-                  .map((business) => ListingWrapper(business, 'Business'))
-                  .toList(),
-        ),
-      );
-    }
-
-    if (listingType == 'All' || listingType == 'Event') {
-      streams.add(
-        _firebaseServices.getUpcomingEvents().map(
-          (events) =>
-              events.map((event) => ListingWrapper(event, 'Event')).toList(),
-        ),
-      );
-    }
-
-    if (streams.isEmpty) {
-      return Stream.value([]);
-    }
-
-    return _combineStreams(streams);
-  }
-
-  Stream<List<ListingWrapper>> _getCombinedListingsByCategoryStream(
-    List<String> categories,
-    String listingType,
-  ) {
-    List<Stream<List<ListingWrapper>>> streams = [];
-
-    if (listingType == 'All' || listingType == 'Item') {
-      streams.add(
-        _firebaseServices
-            .getItemsByCategory(categories)
-            .map(
-              (items) =>
-                  items.map((item) => ListingWrapper(item, 'Item')).toList(),
-            ),
-      );
-    }
-
-    if (listingType == 'All' || listingType == 'Business') {
-      streams.add(
-        _firebaseServices
-            .getBusinessesByCategory(categories)
-            .map(
-              (businesses) =>
-                  businesses
-                      .map((business) => ListingWrapper(business, 'Business'))
-                      .toList(),
-            ),
-      );
-    }
-
-    if (listingType == 'All' || listingType == 'Event') {
-      streams.add(
-        _firebaseServices
-            .getEventsByCategory(categories)
-            .map(
-              (events) =>
-                  events
-                      .map((event) => ListingWrapper(event, 'Event'))
-                      .toList(),
-            ),
-      );
-    }
-
-    if (streams.isEmpty) {
-      return Stream.value([]);
-    }
-
-    return _combineStreams(streams);
-  }
-
-  Stream<List<ListingWrapper>> _combineStreams(
-    List<Stream<List<ListingWrapper>>> streams,
-  ) {
-    if (streams.length == 1) {
-      return streams.first;
-    }
-
-    return streams.reduce((stream1, stream2) {
-      return stream1.asyncMap((list1) async {
-        final list2 = await stream2.first;
-        return [...list1, ...list2];
-      });
-    });
-  }
-
-  double _calculateDistance(
-    double lat1,
-    double lng1,
-    double lat2,
-    double lng2,
-  ) {
-    const double earthRadiusMiles = 3959.0;
-
-    double lat1Rad = lat1 * (3.14159265359 / 180.0);
-    double lng1Rad = lng1 * (3.14159265359 / 180.0);
-    double lat2Rad = lat2 * (3.14159265359 / 180.0);
-    double lng2Rad = lng2 * (3.14159265359 / 180.0);
-
-    double dLat = lat2Rad - lat1Rad;
-    double dLng = lng2Rad - lng1Rad;
-
-    double a =
-        (sin(dLat / 2) * sin(dLat / 2)) +
-        (cos(lat1Rad) * cos(lat2Rad) * sin(dLng / 2) * sin(dLng / 2));
-
-    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-    double distance = earthRadiusMiles * c;
-
-    return distance;
-  }
-
-  List<ListingWrapper> _filterProducts(List<ListingWrapper> products) {
-    List<ListingWrapper> filtered = products;
-
-    if (searchQuery.isNotEmpty) {
-      filtered =
-          filtered.where((product) {
-            final title = product.name?.toLowerCase() ?? '';
-            final description = product.description?.toLowerCase() ?? '';
-            final categories = product.category ?? [];
-
-            return title.contains(searchQuery.toLowerCase()) ||
-                description.contains(searchQuery.toLowerCase()) ||
-                categories.any(
-                  (c) => c.toLowerCase().contains(searchQuery.toLowerCase()),
-                );
-          }).toList();
-    }
-
-    if (minPriceController.text.isNotEmpty ||
-        maxPriceController.text.isNotEmpty) {
-      double? minPrice =
-          minPriceController.text.isNotEmpty
-              ? double.tryParse(minPriceController.text)
-              : null;
-      double? maxPrice =
-          maxPriceController.text.isNotEmpty
-              ? double.tryParse(maxPriceController.text)
-              : null;
-
-      filtered =
-          filtered.where((product) {
-            if (product.type != 'Item' || product.price == null) return true;
-
-            bool passesMin = minPrice == null || product.price! >= minPrice;
-            bool passesMax = maxPrice == null || product.price! <= maxPrice;
-
-            return passesMin && passesMax;
-          }).toList();
-    }
-
-    if ((useMyLocation || addressController.text.isNotEmpty) &&
-        latitude != null &&
-        longitude != null) {
-      double userLat = latitude!;
-      double userLng = longitude!;
-      double maxRadius = double.parse(selectedRadius.split(' ')[0]);
-
-      filtered =
-          filtered.where((product) {
-            if (product.latitude == null ||
-                product.longitude == null ||
-                product.latitude == 0.0 ||
-                product.longitude == 0.0) {
-              return false;
-            }
-
-            double productLat = product.latitude!.toDouble();
-            double productLng = product.longitude!.toDouble();
-
-            double distance = _calculateDistance(
-              userLat,
-              userLng,
-              productLat,
-              productLng,
-            );
-
-            return distance <= maxRadius;
-          }).toList();
-    }
-
-    _sortProducts(filtered);
-
-    return filtered;
-  }
-
-  void _sortProducts(List<ListingWrapper> products) {
-    switch (sortBy) {
-      case 'Price: Low to High':
-        products.sort((a, b) {
-          double priceA = a.price ?? double.infinity;
-          double priceB = b.price ?? double.infinity;
-          return priceA.compareTo(priceB);
-        });
-        break;
-      case 'Price: High to Low':
-        products.sort((a, b) {
-          double priceA = a.price ?? 0;
-          double priceB = b.price ?? 0;
-          return priceB.compareTo(priceA);
-        });
-        break;
-      case 'Name: A to Z':
-        products.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-        break;
-      case 'Name: Z to A':
-        products.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
-        break;
-      case 'Newest First':
-        products.sort((a, b) {
-          if (a.createdAt == null && b.createdAt == null) return 0;
-          if (a.createdAt == null) return 1;
-          if (b.createdAt == null) return -1;
-          return b.createdAt!.compareTo(a.createdAt!);
-        });
-        break;
-      case 'Featured':
-      default:
-        break;
-    }
+    _loadListings();
   }
 
   void _setupFocusListener() {
@@ -390,6 +174,189 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
         });
       }
     });
+  }
+
+  Future<void> _loadListings() async {
+    setState(() {
+      isLoadingListings = true;
+    });
+
+    try {
+      List<UnifiedListing> listings;
+      
+      if (selectedMainCategory == 'All') {
+        listings = await _listingService.getFilteredListings(
+          listingType: selectedListingType,
+          perPage: 100,
+        );
+      } else {
+        List<int> categoryIds = _getCategoryIds();
+        listings = await _listingService.getFilteredListings(
+          listingType: selectedListingType,
+          categories: categoryIds,
+          perPage: 100,
+        );
+      }
+
+      setState(() {
+        _allListings = listings;
+        _filteredListings = _filterProducts(listings);
+        isLoadingListings = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingListings = false;
+      });
+      print('Error loading listings: $e');
+    }
+  }
+
+  List<int> _getCategoryIds() {
+    if (selectedMainCategory == 'All') return [];
+    
+    final categoryData = categoriesStaticNumber[selectedMainCategory];
+    if (categoryData == null) return [];
+
+    if (selectedSubCategory == 'All' || selectedSubCategory == selectedMainCategory) {
+      // Return all children IDs for this main category
+      final children = categoryData['children'] as List<dynamic>;
+      return children.map((child) => child['id'] as int).toList();
+    } else {
+      // Return specific subcategory ID
+      final children = categoryData['children'] as List<dynamic>;
+      final subcategory = children.firstWhere(
+        (child) => child['name'] == selectedSubCategory,
+        orElse: () => null,
+      );
+      return subcategory != null ? [subcategory['id'] as int] : [];
+    }
+  }
+
+  List<UnifiedListing> _filterProducts(List<UnifiedListing> listings) {
+    List<UnifiedListing> filtered = List.from(listings);
+
+    // Apply listing type filter
+    if (selectedListingType != 'All') {
+      filtered = filtered.where((listing) => 
+        listing.listingType.toLowerCase() == selectedListingType.toLowerCase()
+      ).toList();
+    }
+
+    // Apply search filter
+    if (searchQuery.isNotEmpty) {
+      filtered = filtered.where((listing) {
+        final title = listing.title?.toLowerCase() ?? '';
+        final content = listing.cleanContent.toLowerCase();
+        
+        return title.contains(searchQuery.toLowerCase()) ||
+            content.contains(searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    // Apply price range filter (only for Items)
+    if (minPriceController.text.isNotEmpty || maxPriceController.text.isNotEmpty) {
+      double? minPrice = minPriceController.text.isNotEmpty
+          ? double.tryParse(minPriceController.text)
+          : null;
+      double? maxPrice = maxPriceController.text.isNotEmpty
+          ? double.tryParse(maxPriceController.text)
+          : null;
+
+      filtered = filtered.where((listing) {
+        if (!listing.isItem || listing.priceAsDouble == null) return true;
+
+        bool passesMin = minPrice == null || listing.priceAsDouble! >= minPrice;
+        bool passesMax = maxPrice == null || listing.priceAsDouble! <= maxPrice;
+
+        return passesMin && passesMax;
+      }).toList();
+    }
+
+    // Apply location radius filter
+    if ((useMyLocation || addressController.text.isNotEmpty) &&
+        latitude != null &&
+        longitude != null) {
+      double userLat = latitude!;
+      double userLng = longitude!;
+      double maxRadius = double.parse(selectedRadius.split(' ')[0]);
+
+      filtered = filtered.where((listing) {
+        if (listing.latitude == null || listing.longitude == null) {
+          return false;
+        }
+
+        double distance = _calculateDistance(
+          userLat,
+          userLng,
+          listing.latitude!,
+          listing.longitude!,
+        );
+
+        return distance <= maxRadius;
+      }).toList();
+    }
+
+    // Apply sorting
+    _sortProducts(filtered);
+
+    return filtered;
+  }
+
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadiusMiles = 3959.0;
+    const double pi = 3.14159265359;
+
+    double lat1Rad = lat1 * (pi / 180.0);
+    double lng1Rad = lng1 * (pi / 180.0);
+    double lat2Rad = lat2 * (pi / 180.0);
+    double lng2Rad = lng2 * (pi / 180.0);
+
+    double dLat = lat2Rad - lat1Rad;
+    double dLng = lng2Rad - lng1Rad;
+
+    double a = (sin(dLat / 2) * sin(dLat / 2)) +
+        (cos(lat1Rad) * cos(lat2Rad) * sin(dLng / 2) * sin(dLng / 2));
+
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusMiles * c;
+  }
+
+  void _sortProducts(List<UnifiedListing> listings) {
+    switch (sortBy) {
+      case 'Price: Low to High':
+        listings.sort((a, b) {
+          double priceA = a.priceAsDouble ?? double.infinity;
+          double priceB = b.priceAsDouble ?? double.infinity;
+          return priceA.compareTo(priceB);
+        });
+        break;
+      case 'Price: High to Low':
+        listings.sort((a, b) {
+          double priceA = a.priceAsDouble ?? 0;
+          double priceB = b.priceAsDouble ?? 0;
+          return priceB.compareTo(priceA);
+        });
+        break;
+      case 'Name: A to Z':
+        listings.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+        break;
+      case 'Name: Z to A':
+        listings.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
+        break;
+      case 'Newest First':
+        listings.sort((a, b) {
+          if (a.createdAt == null && b.createdAt == null) return 0;
+          if (a.createdAt == null) return 1;
+          if (b.createdAt == null) return -1;
+          return b.createdAt!.compareTo(a.createdAt!);
+        });
+        break;
+      case 'Featured':
+      default:
+        // Keep original order or implement featured logic
+        break;
+    }
   }
 
   Future<void> _searchLocations() async {
@@ -559,8 +526,8 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       setState(() {
         selectedMainCategory = category;
         selectedSubCategory = 'All';
-        _initializeListingsStream();
       });
+      _loadListings();
     }
   }
 
@@ -651,7 +618,7 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       filtersApplied = false;
     });
     _formKey.currentState?.reset();
-    _initializeListingsStream();
+    _loadListings();
   }
 
   void _toggleLocationMode() {
@@ -684,7 +651,7 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
       searchQuery = searchController.text.trim();
     });
 
-    _initializeListingsStream();
+    _loadListings();
 
     Get.snackbar(
       'Filters Applied',
@@ -766,44 +733,6 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFEDEDED),
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(16),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 14,
-                          color: Colors.white,
-                        ),
-                        SizedBox(height: 4),
-                        Container(width: 80, height: 16, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
           );
         },
@@ -837,49 +766,11 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
     );
   }
 
-  void _navigateToProductDetail(ListingWrapper listing) {
-    if (listing.listing is ItemListing) {
-      Get.to(() => ItemProductDetailScreen(product: listing.listing))?.then((
-        a,
-      ) {
-        setState(() {});
-      });
-    } else if (listing.listing is BusinessListing) {
-      Get.to(() => BusinessDetailScreen(business: listing.listing))?.then((a) {
-        setState(() {});
-      });
-    } else if (listing.listing is EventListing) {
-      Get.to(() => EventDetailScreen(event: listing.listing))?.then((a) {
-        setState(() {});
-      });
-    }
-  }
-
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 64, color: Colors.red),
-          SizedBox(height: 16),
-          Text(
-            'Error loading listings',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-          ),
-          SizedBox(height: 8),
-          Text('Please try again later', style: TextStyle(color: Colors.grey)),
-          SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _initializeListingsStream();
-              });
-            },
-            child: Text('Retry'),
-          ),
-        ],
-      ),
-    );
+  void _navigateToProductDetail(UnifiedListing listing) {
+    // Navigate to unified detail screen
+    Get.to(() => UnifiedDetailScreen(listing: listing))?.then((a) {
+      setState(() {});
+    });
   }
 
   @override
@@ -926,12 +817,10 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                                 SizedBox(height: 40),
                                 _buildApplyButton(),
                                 SizedBox(height: 40),
-
                                 _buildListingsHeader(),
                                 SizedBox(height: 20),
                                 _buildListingsGrid(),
                                 SizedBox(height: 40),
-
                                 _buildMapSection(),
                               ],
                             ),
@@ -1092,23 +981,22 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                         bottomRight: Radius.circular(8),
                       ),
                       child: Center(
-                        child:
-                            isSearchingLocation
-                                ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
+                        child: isSearchingLocation
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
                                   ),
-                                )
-                                : Icon(
-                                  Icons.search,
-                                  color: Colors.white,
-                                  size: 20,
                                 ),
+                              )
+                            : Icon(
+                                Icons.search,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                       ),
                     ),
                   ),
@@ -1175,18 +1063,16 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
         itemBuilder: (context, index) {
           final suggestion = locationSuggestions[index];
           return InkWell(
-            onTap:
-                () => _getLocationDetails(
-                  suggestion['placeId'],
-                  suggestion['description'],
-                ),
+            onTap: () => _getLocationDetails(
+              suggestion['placeId'],
+              suggestion['description'],
+            ),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
-                border:
-                    index < locationSuggestions.length - 1
-                        ? Border(bottom: BorderSide(color: Color(0xFFE0E0E0)))
-                        : null,
+                border: index < locationSuggestions.length - 1
+                    ? Border(bottom: BorderSide(color: Color(0xFFE0E0E0)))
+                    : null,
               ),
               child: Row(
                 children: [
@@ -1225,20 +1111,19 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children:
-              listingTypes.map((type) {
-                return _buildFilterChip(
-                  type,
-                  selectedListingType == type,
-                  true,
-                  onTap: () {
-                    setState(() {
-                      selectedListingType = type;
-                      _initializeListingsStream();
-                    });
-                  },
-                );
-              }).toList(),
+          children: listingTypes.map((type) {
+            return _buildFilterChip(
+              type,
+              selectedListingType == type,
+              true,
+              onTap: () {
+                setState(() {
+                  selectedListingType = type;
+                });
+                _loadListings();
+              },
+            );
+          }).toList(),
         ),
       ],
     );
@@ -1282,13 +1167,12 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                   isExpanded: true,
                   icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey),
                   onChanged: _onMainCategoryChanged,
-                  items:
-                      mainCategories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category, style: TextStyle(fontSize: 16)),
-                        );
-                      }).toList(),
+                  items: mainCategories.map((category) {
+                    return DropdownMenuItem(
+                      value: category,
+                      child: Text(category, style: TextStyle(fontSize: 16)),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -1324,20 +1208,19 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                       if (value != null) {
                         setState(() {
                           selectedSubCategory = value;
-                          _initializeListingsStream();
                         });
+                        _loadListings();
                       }
                     },
-                    items:
-                        ['All', ..._getSubCategories()].map((subCategory) {
-                          return DropdownMenuItem(
-                            value: subCategory,
-                            child: Text(
-                              subCategory,
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          );
-                        }).toList(),
+                    items: ['All', ..._getSubCategories()].map((subCategory) {
+                      return DropdownMenuItem(
+                        value: subCategory,
+                        child: Text(
+                          subCategory,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
@@ -1385,13 +1268,9 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                     ),
                     child: TextFormField(
                       controller: minPriceController,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}'),
-                        ),
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                       ],
                       validator: (value) => _validatePriceField(value, true),
                       decoration: InputDecoration(
@@ -1436,13 +1315,9 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                     ),
                     child: TextFormField(
                       controller: maxPriceController,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}'),
-                        ),
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                       ],
                       validator: (value) => _validatePriceField(value, false),
                       decoration: InputDecoration(
@@ -1505,20 +1380,19 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
                   });
                 }
               },
-              items:
-                  radiusOptions.map((radius) {
-                    return DropdownMenuItem(
-                      value: radius,
-                      child: Text(
-                        radius,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+              items: radiusOptions.map((radius) {
+                return DropdownMenuItem(
+                  value: radius,
+                  child: Text(
+                    radius,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ),
@@ -1562,21 +1436,19 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
         decoration: BoxDecoration(
           color: isSelected && isOrange ? Color(0xFFF2B342) : Color(0xFFF0F0F0),
           borderRadius: BorderRadius.circular(20),
-          border:
-              isSelected && isOrange
-                  ? null
-                  : Border.all(color: Colors.grey[300]!, width: 1),
-          boxShadow:
-              isSelected && isOrange
-                  ? [
-                    BoxShadow(
-                      color: Color(0xFFF2B342).withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                  : null,
+          border: isSelected && isOrange
+              ? null
+              : Border.all(color: Colors.grey[300]!, width: 1),
+          boxShadow: isSelected && isOrange
+              ? [
+                  BoxShadow(
+                    color: Color(0xFFF2B342).withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -1591,216 +1463,167 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
   }
 
   Widget _buildListingsHeader() {
-    return StreamBuilder<List<ListingWrapper>>(
-      stream: _listingsStream,
-      builder: (context, snapshot) {
-        final filteredProducts =
-            snapshot.hasData
-                ? _filterProducts(snapshot.data!)
-                : <ListingWrapper>[];
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          _getListingsText(),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _getListingsText(),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+              '${_filteredListings.length} ${_getPluralListingType(selectedListingType)} found',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
-            SizedBox(height: 8),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${filteredProducts.length} ${_getPluralListingType(selectedListingType)} found',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (String value) {
-                    setState(() {
-                      sortBy = value;
-                    });
-                  },
-                  color: Color(0xFFF2B342),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            PopupMenuButton<String>(
+              onSelected: (String value) {
+                setState(() {
+                  sortBy = value;
+                  _filteredListings = _filterProducts(_allListings);
+                });
+              },
+              color: Color(0xFFF2B342),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem(
+                  value: 'Featured',
+                  child: Center(
+                    child: Text(
+                      'Featured',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
-                  itemBuilder:
-                      (BuildContext context) => [
-                        PopupMenuItem(
-                          value: 'Featured',
-                          child: Center(
-                            child: Text(
-                              'Featured',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        if (selectedListingType == 'Item' ||
-                            selectedListingType == 'All') ...[
-                          PopupMenuItem(
-                            value: 'Price: Low to High',
-                            child: Center(
-                              child: Text(
-                                'Price: Low to High',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'Price: High to Low',
-                            child: Center(
-                              child: Text(
-                                'Price: High to Low',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                        PopupMenuItem(
-                          value: 'Name: A to Z',
-                          child: Center(
-                            child: Text(
-                              'Name: A to Z',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'Name: Z to A',
-                          child: Center(
-                            child: Text(
-                              'Name: Z to A',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'Newest First',
-                          child: Center(
-                            child: Text(
-                              'Newest First',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Sort by: $sortBy',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                if (selectedListingType == 'Item' || selectedListingType == 'All') ...[
+                  PopupMenuItem(
+                    value: 'Price: Low to High',
+                    child: Center(
+                      child: Text(
+                        'Price: Low to High',
+                        style: TextStyle(color: Colors.white),
                       ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.grey[600],
-                        size: 18,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'Price: High to Low',
+                    child: Center(
+                      child: Text(
+                        'Price: High to Low',
+                        style: TextStyle(color: Colors.white),
                       ),
-                    ],
+                    ),
+                  ),
+                ],
+                PopupMenuItem(
+                  value: 'Name: A to Z',
+                  child: Center(
+                    child: Text(
+                      'Name: A to Z',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'Name: Z to A',
+                  child: Center(
+                    child: Text(
+                      'Name: Z to A',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'Newest First',
+                  child: Center(
+                    child: Text(
+                      'Newest First',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Sort by: $sortBy',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.grey[600],
+                    size: 18,
+                  ),
+                ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 
   Widget _buildListingsGrid() {
-    return StreamBuilder<List<ListingWrapper>>(
-      stream: _listingsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildShimmerLoading();
-        }
+    if (isLoadingListings) {
+      return _buildShimmerLoading();
+    }
 
-        if (snapshot.hasError) {
-          return _buildErrorState(snapshot.error.toString());
-        }
+    if (_filteredListings.isEmpty) {
+      return SizedBox(
+        height: 200,
+        child: _buildEmptyState(
+          searchQuery.isNotEmpty
+              ? 'No ${_getPluralListingType(selectedListingType)} found for "$searchQuery"'
+              : 'No ${_getPluralListingType(selectedListingType)} found in selected categories\nBe the first to list something!',
+        ),
+      );
+    }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return SizedBox(
-            height: 200,
-            child: _buildEmptyState(
-              searchQuery.isNotEmpty
-                  ? 'No ${_getPluralListingType(selectedListingType)} found for "$searchQuery"'
-                  : 'No ${_getPluralListingType(selectedListingType)} found in selected categories\nBe the first to list something!',
-            ),
-          );
-        }
-
-        final filteredProducts = _filterProducts(snapshot.data!);
-
-        if (filteredProducts.isEmpty) {
-          return SizedBox(
-            height: 200,
-            child: _buildEmptyState(
-              searchQuery.isNotEmpty
-                  ? 'No ${_getPluralListingType(selectedListingType)} found for "$searchQuery"'
-                  : 'No ${_getPluralListingType(selectedListingType)} match your current filters',
-            ),
-          );
-        }
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.65,
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.65,
+      ),
+      itemCount: _filteredListings.length,
+      itemBuilder: (context, index) {
+        final listing = _filteredListings[index];
+        return GestureDetector(
+          onTap: () => _navigateToProductDetail(listing),
+          child: UnifiedProductCard(
+            listing: listing,
+            categorySelected: [selectedMainCategory],
+            onFavoriteTap: () {
+              print('Added to favorites: ${listing.title}');
+            },
           ),
-          itemCount: filteredProducts.length,
-          itemBuilder: (context, index) {
-            final product = filteredProducts[index];
-            return GestureDetector(
-              onTap: () => _navigateToProductDetail(product),
-              child: ProductCard(
-                categorySelected: [selectedMainCategory],
-                listingWrapper: product,
-                onFavoriteTap: () {
-                  print('Added to favorites: ${product.name}');
-                },
-              ),
-            );
-          },
         );
       },
     );
   }
 
   Widget _buildMapSection() {
-    return Container();
+    if (isLoadingListings || _filteredListings.isEmpty) {
+      return Container();
+    }
+
+    return ListingsMapWidget(
+      listings: _filteredListings,
+      onListingTap: (listing) => _navigateToProductDetail(listing),
+      initialZoom: 12.0,
+    );
   }
-  //   return StreamBuilder<List<ListingWrapper>>(
-  //     stream: _listingsStream,
-  //     builder: (context, snapshot) {
-  //       if (snapshot.connectionState == ConnectionState.waiting ||
-  //           !snapshot.hasData ||
-  //           snapshot.data!.isEmpty) {
-  //         return Container();
-  //       }
-
-  //       final filteredProducts = _filterProducts(snapshot.data!);
-
-  //       if (filteredProducts.isEmpty) {
-  //         return Container();
-  //       }
-
-  //       return ListingsMapWidget(
-  //         listings: filteredProducts,
-  //         onListingTap: (listing) => _navigateToProductDetail(listing),
-  //         initialZoom: 12.0,
-  //       );
-  //     },
-  //   );
-  // }
 }
