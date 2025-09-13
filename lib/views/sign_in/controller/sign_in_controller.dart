@@ -1,13 +1,11 @@
 // views/sign_in/controller/sign_in_controller.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
+
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
-import 'package:dedicated_cowboy/app/services/socail.dart';
 import 'package:dedicated_cowboy/app/utils/exceptions.dart';
 import 'package:dedicated_cowboy/bottombar/bottom_bar_widegt.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -27,18 +25,15 @@ class SignInController extends GetxController {
   final rememberMe = false.obs;
   final isLoading = false.obs;
   final isForgotPasswordLoading = false.obs;
-  final isGoogleLoading = false.obs;
-  final isFacebookLoading = false.obs;
 
   // Services
   late final AuthService _authService;
-  final SocialService _authServiceSocial = SocialService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void onInit() {
     super.onInit();
-    _authService = AuthService();
+    _authService = Get.find<AuthService>();
+    _initializeService();
     _loadRememberMeState();
   }
 
@@ -48,6 +43,15 @@ class SignInController extends GetxController {
     passwordController.value.dispose();
     forgotPasswordEmailController.dispose();
     super.onClose();
+  }
+
+  // Initialize auth service
+  Future<void> _initializeService() async {
+    try {
+      await _authService.initialize();
+    } catch (e) {
+      debugPrint('Error initializing auth service: $e');
+    }
   }
 
   // Load remember me state from SharedPreferences
@@ -102,179 +106,6 @@ class SignInController extends GetxController {
     return AuthValidator.validatePassword(password);
   }
 
-  // Check if user exists in Firestore and has complete profile
-  Future<Map<String, dynamic>> _checkUserInFirestore(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-
-      if (!doc.exists) {
-        return {'exists': false, 'isComplete': false, 'data': null};
-      }
-
-      final userData = doc.data()!;
-
-      // Check for required fields
-      final bool isComplete =
-          userData.containsKey('email') &&
-          userData.containsKey('displayName') &&
-          userData['email'] != null &&
-          userData['displayName'] != null &&
-          userData['email'].toString().isNotEmpty &&
-          userData['displayName'].toString().isNotEmpty;
-
-      return {'exists': true, 'isComplete': isComplete, 'data': userData};
-    } catch (e) {
-      debugPrint('Error checking user in Firestore: $e');
-      return {'exists': false, 'isComplete': false, 'data': null};
-    }
-  }
-
-  // Create or update user document in Firestore
-  Future<void> _createOrUpdateUserDocument(
-    UserModel user, {
-    String? firstName,
-    String? lastName,
-    String? phoneNumber,
-    String? facebookPageId,
-  }) async {
-    try {
-      final userData = {
-        'uid': user.uid,
-        'email': user.email,
-        'displayName': user.displayName ?? '',
-        'photoURL': user.photoURL ?? '',
-        'emailVerified': user.emailVerified,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'firstName': firstName ?? _extractFirstName(user.displayName),
-        'lastName': lastName ?? _extractLastName(user.displayName),
-        'phoneNumber': phoneNumber ?? '',
-        'facebookPageId': facebookPageId ?? '',
-        'signInMethod': 'email', // Will be updated for social sign-ins
-      };
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(userData, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('Error creating/updating user document: $e');
-      rethrow;
-    }
-  }
-
-  String _extractFirstName(String? displayName) {
-    if (displayName == null || displayName.isEmpty) return '';
-    final parts = displayName.trim().split(' ');
-    return parts.isNotEmpty ? parts.first : '';
-  }
-
-  String _extractLastName(String? displayName) {
-    if (displayName == null || displayName.isEmpty) return '';
-    final parts = displayName.trim().split(' ');
-    return parts.length > 1 ? parts.sublist(1).join(' ') : '';
-  }
-
-  // Show dialog to collect missing information
-  Future<Map<String, String>?> _showMissingInfoDialog({
-    String? currentDisplayName,
-    String? currentEmail,
-  }) async {
-    final firstNameController = TextEditingController();
-    final lastNameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final facebookPageIdController = TextEditingController();
-
-    // Pre-fill if display name exists
-    if (currentDisplayName != null && currentDisplayName.isNotEmpty) {
-      firstNameController.text = _extractFirstName(currentDisplayName);
-      lastNameController.text = _extractLastName(currentDisplayName);
-    }
-
-    return await Get.dialog<Map<String, String>>(
-      AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Complete Your Profile'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Please provide the following information to complete your account setup:',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: firstNameController,
-                decoration: const InputDecoration(
-                  labelText: 'First Name *',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: lastNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Last Name *',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number *',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: facebookPageIdController,
-                decoration: const InputDecoration(
-                  labelText: 'Facebook Page ID (Optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: null),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (firstNameController.text.trim().isEmpty ||
-                  lastNameController.text.trim().isEmpty ||
-                  phoneController.text.trim().isEmpty) {
-                Get.snackbar(
-                  'Error',
-                  'Please fill in all required fields',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: Colors.red,
-                  colorText: Colors.white,
-                );
-                return;
-              }
-
-              Get.back(
-                result: {
-                  'firstName': firstNameController.text.trim(),
-                  'lastName': lastNameController.text.trim(),
-                  'phoneNumber': phoneController.text.trim(),
-                  'facebookPageId': facebookPageIdController.text.trim(),
-                },
-              );
-            },
-            child: const Text('Complete'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-  }
-
   // Sign in with email and password
   Future<void> signInWithEmailAndPassword() async {
     if (!formKey.currentState!.validate()) {
@@ -288,29 +119,10 @@ class SignInController extends GetxController {
       final password = passwordController.value.text;
 
       // Sign in using auth service
-      final UserModel user = await _authService.signIn(
+      final ApiUserModel user = await _authService.signIn(
         email: email,
         password: password,
       );
-
-      // Check if user exists in Firestore
-      final userCheck = await _checkUserInFirestore(user.uid);
-
-      if (!userCheck['exists']) {
-        // User doesn't exist in Firestore - sign them out and show error
-        await _authService.signOut();
-
-        Get.snackbar(
-          'Account Not Found',
-          'Your account was not found in our database. Please contact support or sign up again.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 4),
-          icon: const Icon(Icons.error, color: Colors.white),
-        );
-        return;
-      }
 
       // Save remember me state
       await _saveRememberMeState();
@@ -322,7 +134,7 @@ class SignInController extends GetxController {
       // Show success message
       Get.snackbar(
         'Success',
-        'Welcome back, ${user.displayName ?? user.email}!',
+        'Welcome back, ${user.displayName}!',
         snackPosition: SnackPosition.TOP,
         backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
@@ -338,132 +150,6 @@ class SignInController extends GetxController {
       _handleGenericError(e);
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  // Google Sign In with improved loading and validation
-  Future<void> handleGoogleSignIn() async {
-    if (isGoogleLoading.value || isLoading.value) return;
-
-    try {
-      isGoogleLoading.value = true;
-
-      UserCredential? result = await _authServiceSocial.signInWithGoogle();
-
-      if (result != null && result.user != null) {
-        final user = UserModel.fromFirebaseUser(result.user!);
-
-        // Check user in Firestore
-        final userCheck = await _checkUserInFirestore(user.uid);
-
-        if (!userCheck['exists'] || !userCheck['isComplete']) {
-          // Get missing information
-          final missingInfo = await _showMissingInfoDialog(
-            currentDisplayName: user.displayName,
-            currentEmail: user.email,
-          );
-
-          if (missingInfo == null) {
-            // User cancelled, sign them out
-            await _authService.signOut();
-            return;
-          }
-
-          // Create/update user document with complete information
-          await _createOrUpdateUserDocument(
-            user,
-            firstName: missingInfo['firstName'],
-            lastName: missingInfo['lastName'],
-            phoneNumber: missingInfo['phoneNumber'],
-            facebookPageId: missingInfo['facebookPageId'],
-          );
-
-          // Update sign-in method
-          await _firestore.collection('users').doc(user.uid).update({
-            'signInMethod': 'google',
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        Get.snackbar(
-          'Success',
-          'Welcome back, ${result.user!.displayName ?? 'User'}!',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
-        );
-
-        Get.offAll(() => CustomCurvedNavBar());
-      }
-    } catch (e) {
-      _handleGenericError(e);
-    } finally {
-      isGoogleLoading.value = false;
-    }
-  }
-
-  // Facebook Sign In with improved loading and validation
-  Future<void> handleFacebookSignIn() async {
-    if (isFacebookLoading.value || isLoading.value) return;
-
-    try {
-      isFacebookLoading.value = true;
-
-      final result = await _authServiceSocial.signInWithFacebook();
-
-      if (result != null && result.user != null) {
-        final user = UserModel.fromFirebaseUser(result.user!);
-
-        // Check user in Firestore
-        final userCheck = await _checkUserInFirestore(user.uid);
-
-        if (!userCheck['exists'] || !userCheck['isComplete']) {
-          // Get missing information
-          final missingInfo = await _showMissingInfoDialog(
-            currentDisplayName: user.displayName,
-            currentEmail: user.email,
-          );
-
-          if (missingInfo == null) {
-            // User cancelled, sign them out
-            await _authService.signOut();
-            return;
-          }
-
-          // Create/update user document with complete information
-          await _createOrUpdateUserDocument(
-            user,
-            firstName: missingInfo['firstName'],
-            lastName: missingInfo['lastName'],
-            phoneNumber: missingInfo['phoneNumber'],
-            facebookPageId: missingInfo['facebookPageId'],
-          );
-
-          // Update sign-in method
-          await _firestore.collection('users').doc(user.uid).update({
-            'signInMethod': 'facebook',
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        Get.snackbar(
-          'Success',
-          'Welcome back, ${result.user!.displayName ?? 'User'}!',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Color(0xFFF2B342),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
-        );
-
-        Get.offAll(() => CustomCurvedNavBar());
-      }
-    } catch (e) {
-      _handleGenericError(e);
-    } finally {
-      isFacebookLoading.value = false;
     }
   }
 
@@ -566,7 +252,7 @@ class SignInController extends GetxController {
                         const SizedBox(height: 16),
                         // Description text
                         const Text(
-                          'Please enter your email or phone number to recover or set your password.',
+                          'Please enter your email to recover your password.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Color(0xFF666666),
@@ -574,7 +260,7 @@ class SignInController extends GetxController {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // Email or Phone label
+                        // Email label
                         const Text(
                           'Email',
                           style: TextStyle(
@@ -651,10 +337,9 @@ class SignInController extends GetxController {
                               text: 'Send',
                               backgroundColor: appColors.pYellow,
                               isLoading: isForgotPasswordLoading.value,
-                              onTap:
-                                  isForgotPasswordLoading.value
-                                      ? null
-                                      : sendPasswordResetEmail,
+                              onTap: isForgotPasswordLoading.value
+                                  ? null
+                                  : sendPasswordResetEmail,
                             ),
                           ),
                         ),
@@ -683,7 +368,7 @@ class SignInController extends GetxController {
         'Invalid Email',
         emailError,
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Color(0xFFF2B342),
+        backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: const Duration(seconds: 4),
         icon: const Icon(Icons.error, color: Colors.white),
@@ -727,23 +412,23 @@ class SignInController extends GetxController {
 
     // Customize messages based on error codes
     switch (e.code) {
+      case 'invalid-credentials':
+        message = 'Invalid email or password. Please try again.';
+        break;
       case 'user-not-found':
         message = 'No account found with this email address.';
         break;
-      case 'wrong-password':
-        message = 'Incorrect password. Please try again.';
-        break;
-      case 'user-disabled':
-        message = 'This account has been disabled. Please contact support.';
-        break;
-      case 'too-many-requests':
-        message = 'Too many failed attempts. Please try again later.';
-        break;
-      case 'network-request-failed':
+      case 'network-error':
         message = 'Network error. Please check your internet connection.';
         break;
       case 'invalid-email':
         message = 'Please enter a valid email address.';
+        break;
+      case 'too-many-requests':
+        message = 'Too many requests. Please try again later.';
+        break;
+      case 'server-error':
+        message = 'Server error. Please try again later.';
         break;
       default:
         message = e.message;
@@ -753,7 +438,7 @@ class SignInController extends GetxController {
       'Sign In Failed',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Color(0xFFF2B342),
+      backgroundColor: Colors.red,
       colorText: Colors.white,
       duration: const Duration(seconds: 4),
       icon: const Icon(Icons.error, color: Colors.white),
@@ -768,7 +453,7 @@ class SignInController extends GetxController {
       'Error',
       'An unexpected error occurred. Please try again.',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Color(0xFFF2B342),
+      backgroundColor: Colors.red,
       colorText: Colors.white,
       duration: const Duration(seconds: 4),
       icon: const Icon(Icons.error, color: Colors.white),

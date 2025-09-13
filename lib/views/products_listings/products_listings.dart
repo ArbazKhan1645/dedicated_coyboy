@@ -1142,47 +1142,47 @@ class _ProductListingScreenState extends State<ProductListingScreen> {
               },
             ),
             SizedBox(height: 40),
-            StreamBuilder<List<ListingWrapper>>(
-              stream: _listingsStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Container();
-                }
+            // StreamBuilder<List<ListingWrapper>>(
+            //   stream: _listingsStream,
+            //   builder: (context, snapshot) {
+            //     if (snapshot.connectionState == ConnectionState.waiting) {
+            //       return Container();
+            //     }
 
-                if (snapshot.hasError) {
-                  return Container();
-                }
+            //     if (snapshot.hasError) {
+            //       return Container();
+            //     }
 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Container();
-                }
+            //     if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            //       return Container();
+            //     }
 
-                final filteredProducts = _filterProducts(snapshot.data!);
+            //     final filteredProducts = _filterProducts(snapshot.data!);
 
-                if (filteredProducts.isEmpty) {
-                  return Container();
-                }
+            //     if (filteredProducts.isEmpty) {
+            //       return Container();
+            //     }
 
-                return ListingsMapWidget(
-                  listings: filteredProducts,
-                  onListingTap: (listing) {
-                    // Navigate to detail screen based on listing type
-                    if (listing.listing is ItemListing) {
-                      Get.to(
-                        () => ItemProductDetailScreen(product: listing.listing),
-                      );
-                    } else if (listing.listing is BusinessListing) {
-                      Get.to(
-                        () => BusinessDetailScreen(business: listing.listing),
-                      );
-                    } else if (listing.listing is EventListing) {
-                      Get.to(() => EventDetailScreen(event: listing.listing));
-                    }
-                  },
-                  initialZoom: 12.0,
-                );
-              },
-            ),
+            //     return ListingsMapWidget(
+            //       listings: filteredProducts,
+            //       onListingTap: (listing) {
+            //         // Navigate to detail screen based on listing type
+            //         if (listing.listing is ItemListing) {
+            //           Get.to(
+            //             () => ItemProductDetailScreen(product: listing.listing),
+            //           );
+            //         } else if (listing.listing is BusinessListing) {
+            //           Get.to(
+            //             () => BusinessDetailScreen(business: listing.listing),
+            //           );
+            //         } else if (listing.listing is EventListing) {
+            //           Get.to(() => EventDetailScreen(event: listing.listing));
+            //         }
+            //       },
+            //       initialZoom: 12.0,
+            //     );
+            //   },
+            // ),
           ],
         ),
       ),

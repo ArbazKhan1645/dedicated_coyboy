@@ -299,60 +299,60 @@ class _SignInViewState extends State<SignInView>
 
           const SizedBox(height: 25),
 
-          // Social Login Buttons
-          Row(
-            children: [
-              // Google Login Button
-              Expanded(
-                child: SizedBox(
-                  height: 55.h,
-                  child: Obx(
-                    () => CustomElevatedButton(
-                      imageAsset:
-                          'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
-                      borderRadius: 25.r,
-                      text: controller.isGoogleLoading.value ? '' : 'Google',
-                      backgroundColor: appColors.white,
-                      textColor: appColors.black,
-                      isLoading: controller.isGoogleLoading.value,
-                      onTap:
-                          controller.isGoogleLoading.value ||
-                                  controller.isLoading.value ||
-                                  controller.isFacebookLoading.value
-                              ? null
-                              : controller.handleGoogleSignIn,
-                    ),
-                  ),
-                ),
-              ),
+          // // Social Login Buttons
+          // Row(
+          //   children: [
+          //     // Google Login Button
+          //     Expanded(
+          //       child: SizedBox(
+          //         height: 55.h,
+          //         child: Obx(
+          //           () => CustomElevatedButton(
+          //             imageAsset:
+          //                 'assets/images/e7e19efc3d82bb411c1f92df035c4f0b8dfcf272.png',
+          //             borderRadius: 25.r,
+          //             text: controller.isGoogleLoading.value ? '' : 'Google',
+          //             backgroundColor: appColors.white,
+          //             textColor: appColors.black,
+          //             isLoading: controller.isGoogleLoading.value,
+          //             onTap:
+          //                 controller.isGoogleLoading.value ||
+          //                         controller.isLoading.value ||
+          //                         controller.isFacebookLoading.value
+          //                     ? null
+          //                     : controller.handleGoogleSignIn,
+          //           ),
+          //         ),
+          //       ),
+          //     ),
 
-              const SizedBox(width: 15),
+          //     const SizedBox(width: 15),
 
-              // Facebook Login Button
-              Expanded(
-                child: SizedBox(
-                  height: 55.h,
-                  child: Obx(
-                    () => CustomElevatedButton(
-                      imageAsset: 'assets/images/Google__G__logo.svg 1.png',
-                      borderRadius: 25.r,
-                      text:
-                          controller.isFacebookLoading.value ? '' : 'Facebook',
-                      backgroundColor: appColors.darkBlue,
-                      textColor: appColors.white,
-                      isLoading: controller.isFacebookLoading.value,
-                      onTap:
-                          controller.isFacebookLoading.value ||
-                                  controller.isLoading.value ||
-                                  controller.isGoogleLoading.value
-                              ? null
-                              : controller.handleFacebookSignIn,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          //     // Facebook Login Button
+          //     Expanded(
+          //       child: SizedBox(
+          //         height: 55.h,
+          //         child: Obx(
+          //           () => CustomElevatedButton(
+          //             imageAsset: 'assets/images/Google__G__logo.svg 1.png',
+          //             borderRadius: 25.r,
+          //             text:
+          //                 controller.isFacebookLoading.value ? '' : 'Facebook',
+          //             backgroundColor: appColors.darkBlue,
+          //             textColor: appColors.white,
+          //             isLoading: controller.isFacebookLoading.value,
+          //             onTap:
+          //                 controller.isFacebookLoading.value ||
+          //                         controller.isLoading.value ||
+          //                         controller.isGoogleLoading.value
+          //                     ? null
+          //                     : controller.handleFacebookSignIn,
+          //           ),
+          //         ),
+          //       ),
+          //     ),
+          //   ],
+          // ),
 
           const SizedBox(height: 30),
 

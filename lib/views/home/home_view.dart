@@ -10,6 +10,8 @@ import 'package:dedicated_cowboy/views/home/widgets/feature_widget.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
 import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
 import 'package:dedicated_cowboy/views/subscriptions.dart';
+import 'package:dedicated_cowboy/views/word_listings/listings.dart';
+import 'package:dedicated_cowboy/views/word_listings/widgets.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:dedicated_cowboy/widgets/search_bar_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,23 +27,24 @@ class HomeView extends StatelessWidget {
   void _openProductDetail(BuildContext context, dynamic product) {
     FocusScope.of(context).unfocus();
     Widget page;
-    if (product is ItemListing) {
-      page = ItemProductDetailScreen(product: product);
-    } else if (product is BusinessListing) {
-      page = BusinessDetailScreen(business: product);
-    } else {
-      page = EventDetailScreen(event: product);
-    }
+    page = UnifiedDetailScreen(listing: product);
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   Widget _categoryCard(BuildContext context, Category category) {
     return GestureDetector(
       onTap: () {
+        print(categoriesStaticNumber[category.title]?['children']);
         Get.to(
-          () => ProductListingScreen(
-            initialCategory: ['All', ...categoriesStatic[category.title] ?? []],
-            categories: ['All', ...categoriesStatic[category.title] ?? []],
+          () => WebsiteProductListingScreen(
+            initialCategory: [
+              {'name': 'All', 'id': 0},
+              ...categoriesStaticNumber[category.title]?['children'] ?? [],
+            ],
+            categories: [
+              {'name': 'All', 'id': 0},
+              ...categoriesStaticNumber[category.title]?['children'] ?? [],
+            ],
             onProductTap: (product) => _openProductDetail(context, product),
           ),
         );
@@ -98,14 +101,16 @@ class HomeView extends StatelessWidget {
                 onSearchTap: () async {
                   FocusScope.of(context).unfocus();
                   await Get.to(
-                    () => ProductListingScreen(
+                    () => WebsiteProductListingScreen(
                       appliedFilters: {
                         'searchQuery': controller.searchController.text.trim(),
                       },
-                      initialCategory: ['All'],
+                      initialCategory: [
+                        {'name': 'All', 'id': 0},
+                      ],
                       categories: [
-                        'All',
-                        ...controller.categories.map((c) => c.title),
+                        {'name': 'All', 'id': 0},
+                        // ...controller.categories.map((c) => c.title),
                       ],
                       onProductTap:
                           (product) => _openProductDetail(context, product),
@@ -116,15 +121,16 @@ class HomeView extends StatelessWidget {
                 onSubmitted: () async {
                   FocusScope.of(context).unfocus();
                   await Get.to(
-                    () => ProductListingScreen(
+                    () => WebsiteProductListingScreen(
                       appliedFilters: {
                         'searchQuery': controller.searchController.text,
                       },
-                      initialCategory: ['All'],
+                      initialCategory: [
+                        {'name': 'All', 'id': 0},
+                      ],
                       categories: [
-                        'All',
-
-                        ...controller.categories.map((c) => c.title),
+                        {'name': 'All', 'id': 0},
+                        // ...controller.categories.map((c) => c.title),
                       ],
                       onProductTap:
                           (product) => _openProductDetail(context, product),

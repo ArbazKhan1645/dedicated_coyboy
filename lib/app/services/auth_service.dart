@@ -1,271 +1,339 @@
-// services/auth_service.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
-import 'package:dedicated_cowboy/app/repository/auth_repository.dart';
+// app/services/auth_service.dart
+import 'dart:async';
+
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
+import 'package:dedicated_cowboy/app/services/k.dart';
+import 'package:dedicated_cowboy/app/utils/api_client.dart';
 import 'package:dedicated_cowboy/app/utils/exceptions.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class AuthService {
-  final AuthRepository _authRepository;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  UserModel? _currentUser;
+class AuthService extends GetxService {
+  ApiUserModel? _currentUser;
+  String? _currentToken;
 
-  AuthService({AuthRepository? authRepository})
-    : _authRepository = authRepository ?? FirebaseAuthRepository();
+  // Singleton instance
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
-  // Getters
-  UserModel? get currentUser => _currentUser;
-  bool get isSignedIn => _currentUser != null;
-  bool get isEmailVerified => _currentUser?.emailVerified ?? false;
+  // Initialize service
+  Future<AuthService> init() async {
+    await initialize();
+    return this;
+  }
 
-  // Auth state stream
-  Stream<UserModel?> get authStateChanges => _authRepository.authStateChanges;
+  // Stream controller for auth state changes
+  final StreamController<ApiUserModel?> _authStateController =
+      StreamController<ApiUserModel?>.broadcast();
+
+  //ApiUserModel Getters
+  ApiUserModel? get currentUser => _currentUser;
+  String? get currentToken => _currentToken;
+  bool get isSignedIn => _currentUser != null && _currentToken != null;
+  Stream<ApiUserModel?> get authStateChanges => _authStateController.stream;
 
   // Initialize service
   Future<void> initialize() async {
     try {
-      _currentUser = await _authRepository.getCurrentUser();
-    } catch (e) {
-      _currentUser = null;
-      rethrow;
-    }
-  }
+      await _loadStoredAuth();
 
-  // Sign In with enhanced validation
-  Future<UserModel> signIn({
-    required String email,
-    required String password,
-  }) async {
-    _validateEmail(email);
-    _validatePassword(password);
-
-    try {
-      final user = await _authRepository.signInWithEmailAndPassword(
-        email,
-        password,
-      );
-      _currentUser = user;
-      return user;
-    } catch (e) {
-      _currentUser = null;
-      rethrow;
-    }
-  }
-
-  // Enhanced Sign Up with automatic Firestore document creation
-  Future<UserModel> signUp({
-    required String email,
-    required String password,
-    String? displayName,
-    String? firstName,
-    String? lastName,
-    String? phoneNumber,
-    String? facebookPageId,
-  }) async {
-    _validateEmail(email);
-    _validatePassword(password);
-
-    try {
-      final user = await _authRepository.signUpWithEmailAndPassword(
-        email,
-        password,
-      );
-
-      // Update display name if provided
-      if (displayName != null && displayName.isNotEmpty) {
-        await _authRepository.updateProfile(displayName: displayName.trim());
-        await _authRepository.reloadUser();
-        _currentUser = await _authRepository.getCurrentUser();
-      } else {
-        _currentUser = user;
+      // Validate stored token if exists
+      if (_currentToken != null) {
+        await _validateAndRefreshUser();
       }
+    } catch (e) {
+      debugPrint('Auth initialization error: $e');
+      await _clearAuthData();
+    }
+  }
+
+  // Sign In
+  Future<ApiUserModel> signIn({
+    required String email,
+    required String password,
+  }) async {
+    _validateEmail(email);
+    _validatePassword(password);
+
+    try {
+      // Call sign in API
+      final signInResponse = await ApiClient.signIn(
+        email: email,
+        password: password,
+      );
+
+      print(signInResponse.data);
+
+      if (!signInResponse.success || signInResponse.data == null) {
+        throw const AuthException(
+          message: 'Sign in failed. Please try again.',
+          code: 'sign-in-failed',
+        );
+      }
+
+      final token = signInResponse.data!['jwt'] as String?;
+      if (token == null || token.isEmpty) {
+        throw const AuthException(
+          message: 'Invalid authentication token received.',
+          code: 'invalid-token',
+        );
+      }
+
+      // Store token
+      _currentToken = token;
+
+      // Fetch user profile
+      final userResponse = await ApiClient.getUserProfile(token);
+
+      if (!userResponse.success || userResponse.data == null) {
+        throw const AuthException(
+          message: 'Failed to fetch user profile.',
+          code: 'profile-fetch-failed',
+        );
+      }
+
+      _currentUser = userResponse.data!;
+
+      // Store authentication data with token expiry (24 hours from now)
+      final tokenExpiry = DateTime.now().add(const Duration(hours: 24));
+      await AuthStorage.storeAuthData(
+        token: token,
+        user: _currentUser!,
+        tokenExpiry: tokenExpiry,
+      );
+
+      // Notify listeners
+      _authStateController.add(_currentUser);
 
       return _currentUser!;
     } catch (e) {
       _currentUser = null;
+      _currentToken = null;
+      await _clearAuthData();
       rethrow;
     }
   }
 
-  // Create or update user document in Firestore
-  Future<void> createUserDocument(
-    UserModel user, {
-    String? firstName,
-    String? lastName,
-    String? phoneNumber,
-    String? facebookPageId,
-    String signInMethod = 'email',
+  // Sign Up
+  Future<ApiUserModel> signUp({
+    required String email,
+    required String password,
   }) async {
-    try {
-      final userData = {
-        'uid': user.uid,
-        'email': user.email ?? '',
-        'displayName': user.displayName ?? '',
-        'firstName': firstName ?? _extractFirstName(user.displayName),
-        'lastName': lastName ?? _extractLastName(user.displayName),
-        'phoneNumber': phoneNumber ?? '',
-        'facebookPageId': facebookPageId ?? '',
-        'photoURL': user.photoURL ?? '',
-        'emailVerified': user.emailVerified,
-        'signInMethod': signInMethod,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'isProfileComplete': true,
-        'accountStatus': 'active',
-      };
+    _validateEmail(email);
+    _validatePassword(password);
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(userData, SetOptions(merge: true));
-    } catch (e) {
-      throw const AuthException(
-        message: 'Failed to create user profile. Please try again.',
-        code: 'profile-creation-failed',
+    try {
+      // Call sign up API
+      final signUpResponse = await ApiClient.signUp(
+        email: email,
+        password: password,
       );
-    }
-  }
 
-  // Helper methods to extract names
-  String _extractFirstName(String? displayName) {
-    if (displayName == null || displayName.isEmpty) return '';
-    final parts = displayName.trim().split(' ');
-    return parts.isNotEmpty ? parts.first : '';
-  }
-
-  String _extractLastName(String? displayName) {
-    if (displayName == null || displayName.isEmpty) return '';
-    final parts = displayName.trim().split(' ');
-    return parts.length > 1 ? parts.sublist(1).join(' ') : '';
-  }
-
-  // Check if user exists and has complete profile in Firestore
-  Future<Map<String, dynamic>> checkUserInFirestore(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-
-      if (!doc.exists) {
-        return {'exists': false, 'isComplete': false, 'data': null};
+      if (!signUpResponse.success) {
+        throw AuthException(
+          message:
+              signUpResponse.message ?? 'Sign up failed. Please try again.',
+          code: 'sign-up-failed',
+        );
       }
 
-      final userData = doc.data()!;
-
-      // Check for required fields
-      final bool isComplete =
-          userData.containsKey('email') &&
-          userData.containsKey('displayName') &&
-          userData.containsKey('firstName') &&
-          userData.containsKey('lastName') &&
-          userData['email'] != null &&
-          userData['displayName'] != null &&
-          userData['firstName'] != null &&
-          userData['lastName'] != null &&
-          userData['email'].toString().isNotEmpty &&
-          userData['displayName'].toString().isNotEmpty &&
-          userData['firstName'].toString().isNotEmpty &&
-          userData['lastName'].toString().isNotEmpty;
-
-      return {'exists': true, 'isComplete': isComplete, 'data': userData};
+      // After successful sign up, automatically sign in
+      return await signIn(email: email, password: password);
     } catch (e) {
-      return {'exists': false, 'isComplete': false, 'data': null};
+      rethrow;
     }
   }
 
   // Sign Out
   Future<void> signOut() async {
     try {
-      await _authRepository.signOut();
+      await _clearAuthData();
       _currentUser = null;
+      _currentToken = null;
+
+      // Notify listeners
+      _authStateController.add(null);
     } catch (e) {
+      debugPrint('Sign out error: $e');
       rethrow;
     }
   }
 
-  // Forgot Password
+  // Send Password Reset Email
   Future<void> sendPasswordResetEmail(String email) async {
     _validateEmail(email);
 
     try {
-      await _authRepository.sendPasswordResetEmail(email);
+      final response = await ApiClient.resetPasswordRequest(email: email);
+
+      if (!response.success) {
+        throw AuthException(
+          message: response.message ?? 'Failed to send reset password email.',
+          code: 'reset-password-failed',
+        );
+      }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Send Email Verification
-  Future<void> sendEmailVerification() async {
-    if (_currentUser == null) {
-      throw const AuthException(message: 'No user signed in.', code: 'no-user');
-    }
+  // Change Password with Code
+  Future<void> changePasswordWithCode({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    _validateEmail(email);
+    _validatePassword(newPassword);
 
-    if (_currentUser!.emailVerified) {
-      throw const AuthException(
-        message: 'Email is already verified.',
-        code: 'already-verified',
+    try {
+      final response = await ApiClient.changePassword(
+        email: email,
+        code: code,
+        newPassword: newPassword,
       );
-    }
 
-    try {
-      await _authRepository.sendEmailVerification();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // Reload User Data
-  Future<void> reloadUser() async {
-    try {
-      await _authRepository.reloadUser();
-      _currentUser = await _authRepository.getCurrentUser();
+      if (!response.success) {
+        throw AuthException(
+          message: response.message ?? 'Failed to change password.',
+          code: 'change-password-failed',
+        );
+      }
     } catch (e) {
       rethrow;
     }
   }
 
   // Update Profile
-  Future<UserModel> updateProfile({
-    String? displayName,
-    String? photoURL,
+  Future<ApiUserModel> updateProfile({
+    String? name,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? description,
+    String? url,
   }) async {
-    if (_currentUser == null) {
+    if (_currentToken == null) {
       throw const AuthException(message: 'No user signed in.', code: 'no-user');
     }
 
     try {
-      await _authRepository.updateProfile(
-        displayName: displayName?.trim(),
-        photoURL: photoURL?.trim(),
-      );
+      final updateData = <String, dynamic>{};
 
-      // Also update Firestore document
-      if (displayName != null || photoURL != null) {
-        final updateData = <String, dynamic>{
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
+      if (name != null) updateData['name'] = name.trim();
+      if (firstName != null) updateData['first_name'] = firstName.trim();
+      if (lastName != null) updateData['last_name'] = lastName.trim();
+      if (email != null) {
+        _validateEmail(email);
+        updateData['email'] = email.trim();
+      }
+      if (description != null) updateData['description'] = description.trim();
+      if (url != null) updateData['url'] = url.trim();
 
-        if (displayName != null) {
-          updateData['displayName'] = displayName.trim();
-          updateData['firstName'] = _extractFirstName(displayName);
-          updateData['lastName'] = _extractLastName(displayName);
-        }
-
-        if (photoURL != null) {
-          updateData['photoURL'] = photoURL.trim();
-        }
-
-        await _firestore
-            .collection('users')
-            .doc(_currentUser!.uid)
-            .update(updateData);
+      if (updateData.isEmpty) {
+        throw const AuthException(
+          message: 'No data provided for update.',
+          code: 'no-update-data',
+        );
       }
 
-      await reloadUser();
+      final response = await ApiClient.updateUserProfile(
+        token: _currentToken!,
+        updateData: updateData,
+      );
+
+      if (!response.success || response.data == null) {
+        throw AuthException(
+          message: response.message ?? 'Failed to update profile.',
+          code: 'profile-update-failed',
+        );
+      }
+
+      _currentUser = response.data!;
+
+      // Update stored user data
+      await AuthStorage.updateUserData(_currentUser!);
+
+      // Notify listeners
+      _authStateController.add(_currentUser);
+
       return _currentUser!;
     } catch (e) {
       rethrow;
     }
   }
 
-  // Private validation methods
+  // Refresh user data
+  Future<ApiUserModel?> refreshUser() async {
+    if (_currentToken == null) return null;
+
+    try {
+      final response = await ApiClient.getUserProfile(_currentToken!);
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data!;
+        await AuthStorage.updateUserData(_currentUser!);
+        _authStateController.add(_currentUser);
+        return _currentUser;
+      }
+    } catch (e) {
+      debugPrint('Refresh user error: $e');
+      // If token is invalid, sign out
+      if (e is AuthException &&
+          (e.code == 'invalid-credentials' ||
+              e.code == 'access-denied' ||
+              e.code == 'token-expired')) {
+        await signOut();
+      }
+    }
+    return null;
+  }
+
+  // Validate stored token and refresh user
+  Future<void> _validateAndRefreshUser() async {
+    if (_currentToken == null) return;
+
+    try {
+      await refreshUser();
+    } catch (e) {
+      debugPrint('Token validation failed: $e');
+      await _clearAuthData();
+      _currentUser = null;
+      _currentToken = null;
+      _authStateController.add(null);
+    }
+  }
+
+  // Load stored authentication data
+  Future<void> _loadStoredAuth() async {
+    try {
+      final authData = await AuthStorage.loadAuthData();
+
+      if (authData != null) {
+        _currentToken = authData['token'] as String?;
+        _currentUser = authData['user'] as ApiUserModel?;
+
+        // Notify listeners if we have valid data
+        if (_currentUser != null) {
+          _authStateController.add(_currentUser);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading stored auth: $e');
+    }
+  }
+
+  // Clear authentication data
+  Future<void> _clearAuthData() async {
+    try {
+      await AuthStorage.clearAuthData();
+    } catch (e) {
+      debugPrint('Error clearing auth data: $e');
+    }
+  }
+
+  // Validation methods
   void _validateEmail(String email) {
     if (email.isEmpty) {
       throw const AuthException(
@@ -276,7 +344,10 @@ class AuthService {
 
     final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
     if (!emailRegex.hasMatch(email.trim())) {
-      throw AuthExceptions.invalidEmail;
+      throw const AuthException(
+        message: 'Please enter a valid email address.',
+        code: 'invalid-email',
+      );
     }
   }
 
@@ -295,9 +366,24 @@ class AuthService {
       );
     }
   }
+
+  // Check if user is authenticated
+  Future<bool> isAuthenticated() async {
+    if (_currentUser != null && _currentToken != null) {
+      return true;
+    }
+
+    // Check stored auth data
+    return await AuthStorage.hasValidToken();
+  }
+
+  // Dispose
+  void dispose() {
+    _authStateController.close();
+  }
 }
 
-// Enhanced AuthValidator with additional validations
+// Enhanced AuthValidator for REST API
 class AuthValidator {
   static String? validateEmail(String? email) {
     if (email == null || email.isEmpty) {
@@ -306,7 +392,7 @@ class AuthValidator {
 
     final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
     if (!emailRegex.hasMatch(email.trim())) {
-      throw AuthExceptions.invalidEmail;
+      return 'Please enter a valid email address';
     }
 
     return null;
@@ -319,11 +405,6 @@ class AuthValidator {
 
     if (password.length < 6) {
       return 'Password must be at least 6 characters long';
-    }
-
-    // Enhanced password validation
-    if (password.length < 8) {
-      return 'Password should be at least 8 characters for better security';
     }
 
     return null;
@@ -344,20 +425,6 @@ class AuthValidator {
     return null;
   }
 
-  static String? validateDisplayName(String? displayName) {
-    if (displayName != null && displayName.isNotEmpty) {
-      if (displayName.trim().length < 2) {
-        return 'Name must be at least 2 characters long';
-      }
-
-      if (displayName.trim().length > 50) {
-        return 'Name must be less than 50 characters';
-      }
-    }
-
-    return null;
-  }
-
   static String? validateName(String? name, String fieldName) {
     if (name == null || name.trim().isEmpty) {
       return '$fieldName is required';
@@ -371,7 +438,6 @@ class AuthValidator {
       return '$fieldName must be less than 30 characters';
     }
 
-    // Check for valid characters (letters, spaces, hyphens, apostrophes)
     if (!RegExp(r"^[a-zA-Z\s\-']+$").hasMatch(name.trim())) {
       return '$fieldName can only contain letters, spaces, hyphens, and apostrophes';
     }
@@ -384,7 +450,6 @@ class AuthValidator {
       return 'Phone number is required';
     }
 
-    // Remove all non-digit characters for validation
     final digitsOnly = phone.replaceAll(RegExp(r'[^\d]'), '');
 
     if (digitsOnly.length < 10) {

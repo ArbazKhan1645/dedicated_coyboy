@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
+import 'package:dedicated_cowboy/views/word_listings/model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
 class ListingsMapWidget extends StatefulWidget {
-  final List<ListingWrapper> listings;
-  final Function(ListingWrapper)? onListingTap;
+  final List<UnifiedListing> listings;
+  final Function(UnifiedListing)? onListingTap;
   final double initialZoom;
   final LatLng? initialCenter;
 
@@ -143,10 +144,10 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
         Marker(
           markerId: MarkerId('listing_${listing.id ?? i}'),
           position: position,
-          icon: _getMarkerIcon(listing.type),
+          icon: _getMarkerIcon(listing.listingType),
           onTap: () => _showListingDialog(listing),
           infoWindow: InfoWindow(
-            title: listing.name ?? 'Unnamed ${listing.type}',
+            title: listing.title ?? 'Unnamed ${listing.title}',
             snippet: _getMarkerSnippet(listing),
           ),
         ),
@@ -177,22 +178,16 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     }
   }
 
-  String _getMarkerSnippet(ListingWrapper listing) {
-    switch (listing.type.toLowerCase()) {
+  String _getMarkerSnippet(UnifiedListing listing) {
+    switch (listing.listingType.toLowerCase()) {
       case 'item':
-        return listing.price != null
-            ? '\$${listing.price!.toStringAsFixed(2)}'
-            : 'Item';
+        return listing.price != null ? '\$${listing.price!}' : 'Item';
       case 'business':
-        final isVerified = listing.isVerified == true ? ' ✓' : '';
-        return 'Business$isVerified';
+        return 'Business';
       case 'event':
-        if (listing.eventStartDate != null) {
-          return 'Event - ${_formatEventDate(listing.eventStartDate!)}';
-        }
         return 'Event';
       default:
-        return listing.type;
+        return listing.listingType;
     }
   }
 
@@ -210,7 +205,7 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     }
   }
 
-  void _showListingDialog(ListingWrapper listing) {
+  void _showListingDialog(UnifiedListing listing) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -241,10 +236,9 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                           top: Radius.circular(16),
                         ),
                         child:
-                            listing.photoUrls != null &&
-                                    listing.photoUrls!.isNotEmpty
+                            listing.images != null && listing.images!.isNotEmpty
                                 ? Image.network(
-                                  listing.photoUrls!.first,
+                                  listing.images!.first.url.toString(),
                                   width: double.infinity,
                                   height: double.infinity,
                                   fit: BoxFit.cover,
@@ -294,11 +288,11 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getListingTypeColor(listing.type),
+                            color: _getListingTypeColor(listing.listingType),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            listing.type,
+                            listing.listingType,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -308,64 +302,64 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                         ),
                       ),
                       // Additional badges
-                      if (listing.condition != null && listing.type == 'Item')
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              listing.condition!,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (listing.isVerified == true &&
-                          listing.type == 'Business')
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF2B342),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.verified,
-                                  color: Colors.white,
-                                  size: 10,
-                                ),
-                                SizedBox(width: 2),
-                                Text(
-                                  'Verified',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      // if (listing.c != null && listing.type == 'Item')
+                      //   Positioned(
+                      //     bottom: 8,
+                      //     left: 8,
+                      //     child: Container(
+                      //       padding: EdgeInsets.symmetric(
+                      //         horizontal: 8,
+                      //         vertical: 4,
+                      //       ),
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.black.withOpacity(0.7),
+                      //         borderRadius: BorderRadius.circular(12),
+                      //       ),
+                      //       child: Text(
+                      //         listing.condition!,
+                      //         style: TextStyle(
+                      //           color: Colors.white,
+                      //           fontSize: 10,
+                      //           fontWeight: FontWeight.w500,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // if (listing. == true &&
+                      //     listing.type == 'Business')
+                      //   Positioned(
+                      //     bottom: 8,
+                      //     right: 8,
+                      //     child: Container(
+                      //       padding: EdgeInsets.symmetric(
+                      //         horizontal: 6,
+                      //         vertical: 2,
+                      //       ),
+                      //       decoration: BoxDecoration(
+                      //         color: Color(0xFFF2B342),
+                      //         borderRadius: BorderRadius.circular(8),
+                      //       ),
+                      //       child: Row(
+                      //         mainAxisSize: MainAxisSize.min,
+                      //         children: [
+                      //           Icon(
+                      //             Icons.verified,
+                      //             color: Colors.white,
+                      //             size: 10,
+                      //           ),
+                      //           SizedBox(width: 2),
+                      //           Text(
+                      //             'Verified',
+                      //             style: TextStyle(
+                      //               color: Colors.white,
+                      //               fontSize: 8,
+                      //               fontWeight: FontWeight.w500,
+                      //             ),
+                      //           ),
+                      //         ],
+                      //       ),
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ),
@@ -376,7 +370,7 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        listing.name ?? 'Unnamed ${listing.type}',
+                        listing.title ?? 'Unnamed ${listing.title}',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -386,9 +380,9 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 8),
-                      if (listing.description != null)
+                      if (listing.content != null)
                         Text(
-                          listing.description!,
+                          listing.content!,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -401,34 +395,35 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          if (listing.type == 'Item' && listing.price != null)
+                          if (listing.listingType == 'Item' &&
+                              listing.price != null)
                             Text(
-                              '\$${listing.price!.toStringAsFixed(2)}',
+                              '\$${listing.price}',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFFF2B342),
                               ),
-                            )
-                          else if (listing.type == 'Event' &&
-                              listing.eventStartDate != null)
-                            Text(
-                              _formatEventDate(listing.eventStartDate!),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.blue[700],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            )
-                          else if (listing.type == 'Business')
-                            Text(
-                              'Contact for info',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
-                              ),
                             ),
+                          // else if (listing.type == 'Event' &&
+                          //     listing.eventStartDate != null)
+                          //   Text(
+                          //     _formatEventDate(listing.eventStartDate!),
+                          //     style: TextStyle(
+                          //       fontSize: 14,
+                          //       color: Colors.blue[700],
+                          //       fontWeight: FontWeight.w600,
+                          //     ),
+                          //   )
+                          // else if (listing.type == 'Business')
+                          //   Text(
+                          //     'Contact for info',
+                          //     style: TextStyle(
+                          //       fontSize: 14,
+                          //       color: Colors.grey[600],
+                          //       fontStyle: FontStyle.italic,
+                          //     ),
+                          //   ),
                           ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context);

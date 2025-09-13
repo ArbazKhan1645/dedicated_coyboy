@@ -15,7 +15,7 @@ import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
 import 'package:dedicated_cowboy/app/models/modules_models/business_model.dart';
 import 'package:dedicated_cowboy/app/models/modules_models/event_model.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:dedicated_cowboy/views/products_listings/listing_location.dart';
+
 
 class BrowseFilterScreen extends StatefulWidget {
   final Map<String, dynamic>? initialFilters;
@@ -1778,27 +1778,29 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
   }
 
   Widget _buildMapSection() {
-    return StreamBuilder<List<ListingWrapper>>(
-      stream: _listingsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            !snapshot.hasData ||
-            snapshot.data!.isEmpty) {
-          return Container();
-        }
-
-        final filteredProducts = _filterProducts(snapshot.data!);
-
-        if (filteredProducts.isEmpty) {
-          return Container();
-        }
-
-        return ListingsMapWidget(
-          listings: filteredProducts,
-          onListingTap: (listing) => _navigateToProductDetail(listing),
-          initialZoom: 12.0,
-        );
-      },
-    );
+    return Container();
   }
+  //   return StreamBuilder<List<ListingWrapper>>(
+  //     stream: _listingsStream,
+  //     builder: (context, snapshot) {
+  //       if (snapshot.connectionState == ConnectionState.waiting ||
+  //           !snapshot.hasData ||
+  //           snapshot.data!.isEmpty) {
+  //         return Container();
+  //       }
+
+  //       final filteredProducts = _filterProducts(snapshot.data!);
+
+  //       if (filteredProducts.isEmpty) {
+  //         return Container();
+  //       }
+
+  //       return ListingsMapWidget(
+  //         listings: filteredProducts,
+  //         onListingTap: (listing) => _navigateToProductDetail(listing),
+  //         initialZoom: 12.0,
+  //       );
+  //     },
+  //   );
+  // }
 }

@@ -6,10 +6,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:dedicated_cowboy/app/models/notification_model/notification_model.dart';
 import 'package:dedicated_cowboy/app/models/user_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
@@ -25,7 +27,7 @@ class FirebaseNotificationService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -48,10 +50,15 @@ class FirebaseNotificationService {
 
   String? _currentUserToken;
   String? _currentUserId;
+  final authService = Get.find<AuthService>();
 
   // Initialize Firebase Messaging
   Future<void> initialize() async {
-    _currentUserId = _auth.currentUser?.uid;
+    final user = authService.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    _currentUserId = user.id;
 
     if (_currentUserId == null) {
       throw Exception('User not authenticated');
@@ -177,7 +184,8 @@ class FirebaseNotificationService {
   // Save FCM token to Firestore
   Future<void> _saveTokenToFirestore(String token, String userId) async {
     try {
-      final user = _auth.currentUser;
+      final user = authService.currentUser;
+
       if (user == null) return;
 
       final deviceInfo = DeviceInfoPlugin();
@@ -402,12 +410,10 @@ class FirebaseNotificationService {
     String? chatId,
   }) async {
     try {
+      final user = authService.currentUser;
+
       // Get current user ID
-      final currentUserId = _auth.currentUser?.uid;
-      if (currentUserId == null) {
-        print('BLOCKED: Current user is null, cannot send notification');
-        return false;
-      }
+      final currentUserId = user?.id;
 
       // Use provided senderId or fallback to current user
       final actualSenderId = senderId ?? currentUserId;
@@ -731,8 +737,11 @@ class FirebaseNotificationService {
   // Clean up duplicate notifications
   Future<void> cleanupDuplicateNotifications() async {
     try {
-      final currentUserId = _auth.currentUser?.uid;
-      if (currentUserId == null) return;
+      final user = authService.currentUser;
+      if (user == null) {
+        return;
+      }
+      final currentUserId = user.id;
 
       // Get all notifications for current user
       final notifications =

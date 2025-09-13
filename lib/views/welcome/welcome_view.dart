@@ -1,14 +1,15 @@
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/bottombar/bottom_bar_widegt.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
-import 'package:dedicated_cowboy/consts/appthemes.dart';
+
 import 'package:dedicated_cowboy/views/sign_in/sign_in_view.dart';
 import 'package:dedicated_cowboy/views/sign_up/sign_up_view.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/route_manager.dart';
+import 'package:get/get.dart';
+
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class WelcomeView extends StatefulWidget {
   const WelcomeView({super.key});
@@ -28,7 +29,6 @@ class _WelcomeViewState extends State<WelcomeView>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _logoPositionAnimation;
 
-  bool _showSplash = true;
   bool _showBottomSheet = false;
 
   @override
@@ -98,15 +98,14 @@ class _WelcomeViewState extends State<WelcomeView>
     await Future.delayed(const Duration(milliseconds: 2500));
 
     // Check Firebase Auth
-    final user = FirebaseAuth.instance.currentUser;
+    final authService = Get.find<AuthService>();
 
-    if (user != null) {
+    if (authService.isSignedIn) {
       // User is logged in, navigate to home screen
-      Get.offAll(() =>  CustomCurvedNavBar());
+      Get.offAll(() => CustomCurvedNavBar());
     } else {
       // User is not logged in, show welcome screen
       setState(() {
-        _showSplash = false;
         _showBottomSheet = true;
       });
 
@@ -152,10 +151,7 @@ class _WelcomeViewState extends State<WelcomeView>
                 builder: (context, child) {
                   return FadeTransition(
                     opacity: _fadeAnimation,
-                    child: ScaleTransition(
-                      scale: _logoAnimation,
-                      child: child,
-                    ),
+                    child: ScaleTransition(scale: _logoAnimation, child: child),
                   );
                 },
                 child: Center(
@@ -245,7 +241,7 @@ class _WelcomeViewState extends State<WelcomeView>
       animation: _bottomSheetController,
       builder: (context, child) {
         final animationValue = _bottomSheetController.value;
-        
+
         return Column(
           children: [
             // LOGIN Button
@@ -339,18 +335,15 @@ class _WelcomeViewState extends State<WelcomeView>
   }) {
     // Calculate staggered animation progress
     double progress = ((animationValue - delay) / 0.3).clamp(0.0, 1.0);
-    
+
     if (progress <= 0) return const SizedBox.shrink();
-    
+
     // Use Curves.easeOut for smoother staggered animation
     final curvedProgress = Curves.easeOut.transform(progress);
-    
+
     return Transform.translate(
       offset: Offset(0, 15 * (1 - curvedProgress)),
-      child: Opacity(
-        opacity: curvedProgress,
-        child: child,
-      ),
+      child: Opacity(opacity: curvedProgress, child: child),
     );
   }
 }

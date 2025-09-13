@@ -3,13 +3,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
 import 'package:dedicated_cowboy/bindings/initial_bindings.dart';
 import 'package:dedicated_cowboy/firebase_options.dart';
 import 'package:dedicated_cowboy/views/welcome/welcome_view.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -27,11 +28,15 @@ Future<void> main() async {
     sslEnabled: true,
   );
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await FirebaseAuth.instance.authStateChanges().first;
-  await FirebaseAuth.instance.currentUser?.reload();
 
   try {
     await Get.putAsync(() => ChatService().init());
+  } catch (e, stackTrace) {
+    Get.log('Error initializing AuthService: $e\n$stackTrace', isError: true);
+  }
+
+  try {
+    await Get.putAsync(() => AuthService().init());
   } catch (e, stackTrace) {
     Get.log('Error initializing AuthService: $e\n$stackTrace', isError: true);
   }

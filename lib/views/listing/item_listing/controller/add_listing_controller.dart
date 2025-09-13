@@ -1407,7 +1407,6 @@ class ListItemController extends GetxController {
         Get.to(() => ListingFavoritesScreen());
       } else {
         try {
-          
           final user = FirebaseAuth.instance.currentUser;
           if (user != null && user.email != null && user.displayName != null) {
             await EmailTemplates.sendListingUnderReviewEmail(
@@ -1750,4 +1749,50 @@ final Map<String, List<String>> categoriesStatic = {
     "All Other Events",
   ],
   "Western Style": ["Womens", "Mens", "Kids", "Accessories"],
+};
+
+final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
+  "Business & Services": {
+    "id": 310,
+    "parent": 0,
+    "name": "Business & Services",
+    "children": [
+      {"name": "Business & Services", "id": 310, "parent": 0},
+      {"name": "Boutiques", "id": 350, "parent": 310},
+      {"name": "All Other", "id": 352, "parent": 310},
+    ],
+  },
+  "Home & Ranch Decor": {
+    "id": 290,
+    "parent": 0,
+    "name": "Home & Ranch Decor",
+    "children": [
+      {"name": "Home & Ranch Decor", "id": 290, "parent": 0},
+      {"name": "Furniture", "id": 338, "parent": 290},
+      {"name": "Art", "id": 339, "parent": 290},
+      {"name": "Decor", "id": 340, "parent": 290},
+    ],
+  },
+  "Western Life & Events": {
+    "id": 303,
+    "parent": 0,
+    "name": "Western Life & Events",
+    "children": [
+      {"name": "Western Life & Events", "id": 303, "parent": 0},
+      {"name": "Barrel Races", "id": 346, "parent": 303},
+      {"name": "All Other Events", "id": 348, "parent": 303},
+    ],
+  },
+  "Western Style": {
+    "id": 284,
+    "parent": 0,
+    "name": "Western Style",
+    "children": [
+      {"name": "Western Style", "id": 284, "parent": 0},
+      {"name": "Women", "id": 401, "parent": 284},
+      {"name": "Men", "id": 402, "parent": 284},
+      {"name": "Kids", "id": 403, "parent": 284},
+      {"name": "Accessories", "id": 337, "parent": 284},
+    ],
+  },
 };

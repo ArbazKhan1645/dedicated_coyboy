@@ -1,24 +1,16 @@
 // views/sign_up/controller/sign_up_controller.dart
-import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/utils/exceptions.dart';
 import 'package:dedicated_cowboy/bottombar/bottom_bar_widegt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
 
 class SignUpController extends GetxController {
   // Form controllers
   final emailController = TextEditingController().obs;
   final passwordController = TextEditingController().obs;
-  final firstNameController = TextEditingController().obs;
-  final lastNameController = TextEditingController().obs;
-  final phoneController = TextEditingController().obs;
   final confirmPasswordController = TextEditingController().obs;
-  final facebookPageIdController = TextEditingController().obs;
 
   // Form key for validation
   final formKey = GlobalKey<FormState>();
@@ -27,25 +19,20 @@ class SignUpController extends GetxController {
   final isLoading = false.obs;
   final isPasswordVisible = false.obs;
   final isConfirmPasswordVisible = false.obs;
-  final rememberMe = false.obs;
 
-  // Auth service and Firestore
-  final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Auth service
+  late final AuthService _authService;
 
   // Error messages
   final emailError = ''.obs;
   final passwordError = ''.obs;
-  final firstNameError = ''.obs;
-  final lastNameError = ''.obs;
-  final phoneError = ''.obs;
   final confirmPasswordError = ''.obs;
-  final facebookPageIdError = ''.obs;
   final generalError = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
+    _authService = Get.find<AuthService>();
     _initializeAuthService();
   }
 
@@ -54,11 +41,7 @@ class SignUpController extends GetxController {
     // Dispose controllers
     emailController.value.dispose();
     passwordController.value.dispose();
-    firstNameController.value.dispose();
-    lastNameController.value.dispose();
-    phoneController.value.dispose();
     confirmPasswordController.value.dispose();
-    facebookPageIdController.value.dispose();
     super.onClose();
   }
 
@@ -79,19 +62,11 @@ class SignUpController extends GetxController {
     isConfirmPasswordVisible.value = !isConfirmPasswordVisible.value;
   }
 
-  void toggleRememberMe() {
-    rememberMe.value = !rememberMe.value;
-  }
-
   // Clear all errors
   void clearErrors() {
     emailError.value = '';
     passwordError.value = '';
-    firstNameError.value = '';
-    lastNameError.value = '';
-    phoneError.value = '';
     confirmPasswordError.value = '';
-    facebookPageIdError.value = '';
     generalError.value = '';
   }
 
@@ -101,32 +76,12 @@ class SignUpController extends GetxController {
 
     String? firstError;
 
-    final firstNameValidation = _validateFirstName(
-      firstNameController.value.text,
-    );
-    if (firstNameValidation != null) {
-      firstNameError.value = firstNameValidation;
-      firstError ??= firstNameValidation;
-    }
-
-    final lastNameValidation = _validateLastName(lastNameController.value.text);
-    if (lastNameValidation != null) {
-      lastNameError.value = lastNameValidation;
-      firstError ??= lastNameValidation;
-    }
-
     final emailValidation = AuthValidator.validateEmail(
       emailController.value.text,
     );
     if (emailValidation != null) {
       emailError.value = emailValidation;
       firstError ??= emailValidation;
-    }
-
-    final phoneValidation = _validatePhone(phoneController.value.text);
-    if (phoneValidation != null) {
-      phoneError.value = phoneValidation;
-      firstError ??= phoneValidation;
     }
 
     final passwordValidation = AuthValidator.validatePassword(
@@ -146,115 +101,7 @@ class SignUpController extends GetxController {
       firstError ??= confirmPasswordValidation;
     }
 
-    // Facebook Page ID validation (optional)
-    final facebookPageIdValidation = _validateFacebookPageId(
-      facebookPageIdController.value.text,
-    );
-    if (facebookPageIdValidation != null) {
-      facebookPageIdError.value = facebookPageIdValidation;
-      firstError ??= facebookPageIdValidation;
-    }
-
     return firstError;
-  }
-
-  String? _validateFirstName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'First name is required';
-    }
-    if (value.trim().length < 2) {
-      return 'First name must be at least 2 characters';
-    }
-    if (value.trim().length > 30) {
-      return 'First name must be less than 30 characters';
-    }
-    // Check for valid characters (letters, spaces, hyphens, apostrophes)
-    if (!RegExp(r"^[a-zA-Z\s\-']+$").hasMatch(value.trim())) {
-      return 'First name can only contain letters, spaces, hyphens, and apostrophes';
-    }
-    return null;
-  }
-
-  String? _validateLastName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Last name is required';
-    }
-    if (value.trim().length < 2) {
-      return 'Last name must be at least 2 characters';
-    }
-    if (value.trim().length > 30) {
-      return 'Last name must be less than 30 characters';
-    }
-    // Check for valid characters (letters, spaces, hyphens, apostrophes)
-    if (!RegExp(r"^[a-zA-Z\s\-']+$").hasMatch(value.trim())) {
-      return 'Last name can only contain letters, spaces, hyphens, and apostrophes';
-    }
-    return null;
-  }
-
-  String? _validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required';
-    }
-
-    // Remove all non-digit characters for validation
-    final digitsOnly = value.replaceAll(RegExp(r'[^\d]'), '');
-
-    if (digitsOnly.length < 10) {
-      return 'Please enter a valid phone number with at least 10 digits';
-    }
-    if (digitsOnly.length > 15) {
-      return 'Phone number is too long (maximum 15 digits)';
-    }
-
-    return null;
-  }
-
-  String? _validateFacebookPageId(String? value) {
-    // Facebook Page ID is optional
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
-
-    // Basic validation for Facebook Page ID
-    if (value.trim().length < 3) {
-      return 'Facebook Page ID must be at least 3 characters';
-    }
-    if (value.trim().length > 50) {
-      return 'Facebook Page ID must be less than 50 characters';
-    }
-
-    return null;
-  }
-
-  // Create comprehensive user document in Firestore
-  Future<void> _createUserDocument(UserModel user) async {
-    try {
-      final userData = {
-        'uid': user.uid,
-        'email': emailController.value.text.trim(),
-        'displayName':
-            '${firstNameController.value.text.trim()} ${lastNameController.value.text.trim()}',
-        'firstName': firstNameController.value.text.trim(),
-        'lastName': lastNameController.value.text.trim(),
-        'phoneNumber': phoneController.value.text.trim(),
-        'facebookPageId': facebookPageIdController.value.text.trim(),
-        'photoURL': user.photoURL ?? '',
-        'emailVerified': user.emailVerified,
-        'signInMethod': 'email',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'isProfileComplete': true,
-        'accountStatus': 'active',
-      };
-
-      await _firestore.collection('users').doc(user.uid).set(userData);
-
-      debugPrint('User document created successfully for ${user.uid}');
-    } catch (e) {
-      debugPrint('Error creating user document: $e');
-      rethrow;
-    }
   }
 
   // Main sign up function
@@ -275,26 +122,11 @@ class SignUpController extends GetxController {
 
       final email = emailController.value.text.trim();
       final password = passwordController.value.text;
-      final displayName =
-          '${firstNameController.value.text.trim()} ${lastNameController.value.text.trim()}';
 
       // Attempt to sign up
       final user = await _authService.signUp(
         email: email,
         password: password,
-        displayName: displayName,
-      );
-
-      // Create comprehensive user document in Firestore
-      await _createUserDocument(user);
-
-      // Update user profile with display name
-      await _authService.updateProfile(displayName: displayName);
-
-      await EmailTemplates.sendRegistrationWelcomeEmail(
-        recipientEmail: emailController.value.text.trim(),
-        recipientName: displayName,
-        loginUrl: 'https://dedicatedcowboy.com/login', // Optional
       );
 
       // Set onboarding as seen
@@ -326,6 +158,7 @@ class SignUpController extends GetxController {
 
   void _handleAuthException(AuthException e) {
     switch (e.code) {
+      case 'email-already-exists':
       case 'email-already-in-use':
         emailError.value = 'This email is already registered';
         _showError(
@@ -347,7 +180,7 @@ class SignUpController extends GetxController {
         passwordError.value = e.message;
         _showError(e.message);
         break;
-      case 'network-request-failed':
+      case 'network-error':
         _showError(
           'Network error. Please check your internet connection and try again.',
         );
@@ -355,10 +188,13 @@ class SignUpController extends GetxController {
       case 'too-many-requests':
         _showError('Too many attempts. Please try again later.');
         break;
-      case 'operation-not-allowed':
+      case 'server-error':
         _showError(
-          'Email/password accounts are not enabled. Please contact support.',
+          'Server error. Please try again later.',
         );
+        break;
+      case 'validation-error':
+        _showError(e.message);
         break;
       default:
         _showError(
@@ -413,21 +249,19 @@ class SignUpController extends GetxController {
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           Obx(
             () => ElevatedButton(
-              onPressed:
-                  isResettingPassword.value
-                      ? null
-                      : () => _sendPasswordResetEmail(
+              onPressed: isResettingPassword.value
+                  ? null
+                  : () => _sendPasswordResetEmail(
                         forgotPasswordController.text,
                         isResettingPassword,
                       ),
-              child:
-                  isResettingPassword.value
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Send Reset Link'),
+              child: isResettingPassword.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send Reset Link'),
             ),
           ),
         ],
@@ -492,11 +326,7 @@ class SignUpController extends GetxController {
   void clearForm() {
     emailController.value.clear();
     passwordController.value.clear();
-    firstNameController.value.clear();
-    lastNameController.value.clear();
-    phoneController.value.clear();
     confirmPasswordController.value.clear();
-    facebookPageIdController.value.clear();
     clearErrors();
   }
 }

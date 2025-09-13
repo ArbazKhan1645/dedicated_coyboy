@@ -1,10 +1,10 @@
 // providers/subscription_provider.dart
 import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/connectivity.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -194,12 +194,13 @@ class SubscriptionProvider extends GetxController {
         );
 
         try {
-          final user = FirebaseAuth.instance.currentUser;
+          final authService = Get.find<AuthService>();
+          final user = authService.currentUser;
 
-          if (user != null && user.email != null) {
+          if (user != null) {
             await EmailTemplates.sendSubscriptionWelcomeEmail(
-              recipientEmail: user.email!,
-              recipientName: user.displayName ?? 'Dear user',
+              recipientEmail: user.email,
+              recipientName: user.displayName,
               orderId: plan.name,
               totalAmount: '\$${plan.price}',
               orderDetailsUrl: '',

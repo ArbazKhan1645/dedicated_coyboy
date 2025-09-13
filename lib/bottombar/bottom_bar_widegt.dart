@@ -1,3 +1,4 @@
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
@@ -135,12 +136,11 @@ class NavController extends GetxController {
       FirebaseNotificationService();
   Future<void> _initializeNotificationService() async {
     try {
+      final authService = Get.find<AuthService>();
+      final user = authService.currentUser;
       try {
-        final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          await SubscriptionService().initializeAndUpdatePaymentStatus(
-            user.uid,
-          );
+          await SubscriptionService().initializeAndUpdatePaymentStatus(user.id);
         } else {
           debugPrint("Skipped initializeAndUpdatePaymentStatus: user is null");
         }

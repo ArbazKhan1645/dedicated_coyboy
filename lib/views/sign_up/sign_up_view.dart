@@ -150,56 +150,56 @@ class _SignUpViewState extends State<SignUpView> {
                                   : const SizedBox.shrink(),
                         ),
 
-                        // First Name Field
-                        Obx(
-                          () => CustomTextField(
-                            labelText: 'First Name',
-                            hintText: 'Enter your first name',
-                            controller: controller.firstNameController.value,
-                            keyboardType: TextInputType.name,
+                        // // First Name Field
+                        // Obx(
+                        //   () => CustomTextField(
+                        //     labelText: 'First Name',
+                        //     hintText: 'Enter your first name',
+                        //     controller: controller.firstNameController.value,
+                        //     keyboardType: TextInputType.name,
 
-                            prefixIcon: const Icon(Icons.person_outline),
-                            validator:
-                                (value) =>
-                                    controller.firstNameError.value.isEmpty
-                                        ? null
-                                        : controller.firstNameError.value,
-                            onChanged: (value) {
-                              if (controller.firstNameError.value.isNotEmpty) {
-                                controller.firstNameError.value = '';
-                              }
-                              if (controller.generalError.value.isNotEmpty) {
-                                controller.generalError.value = '';
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                        //     prefixIcon: const Icon(Icons.person_outline),
+                        //     validator:
+                        //         (value) =>
+                        //             controller.firstNameError.value.isEmpty
+                        //                 ? null
+                        //                 : controller.firstNameError.value,
+                        //     onChanged: (value) {
+                        //       if (controller.firstNameError.value.isNotEmpty) {
+                        //         controller.firstNameError.value = '';
+                        //       }
+                        //       if (controller.generalError.value.isNotEmpty) {
+                        //         controller.generalError.value = '';
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 20),
 
-                        // Last Name Field
-                        Obx(
-                          () => CustomTextField(
-                            labelText: 'Last Name',
-                            hintText: 'Enter your last name',
-                            controller: controller.lastNameController.value,
-                            keyboardType: TextInputType.name,
+                        // // Last Name Field
+                        // Obx(
+                        //   () => CustomTextField(
+                        //     labelText: 'Last Name',
+                        //     hintText: 'Enter your last name',
+                        //     controller: controller.lastNameController.value,
+                        //     keyboardType: TextInputType.name,
 
-                            prefixIcon: const Icon(Icons.person_outline),
-                            validator:
-                                (value) =>
-                                    controller.lastNameError.value.isEmpty
-                                        ? null
-                                        : controller.lastNameError.value,
-                            onChanged: (value) {
-                              if (controller.lastNameError.value.isNotEmpty) {
-                                controller.lastNameError.value = '';
-                              }
-                              if (controller.generalError.value.isNotEmpty) {
-                                controller.generalError.value = '';
-                              }
-                            },
-                          ),
-                        ),
+                        //     prefixIcon: const Icon(Icons.person_outline),
+                        //     validator:
+                        //         (value) =>
+                        //             controller.lastNameError.value.isEmpty
+                        //                 ? null
+                        //                 : controller.lastNameError.value,
+                        //     onChanged: (value) {
+                        //       if (controller.lastNameError.value.isNotEmpty) {
+                        //         controller.lastNameError.value = '';
+                        //       }
+                        //       if (controller.generalError.value.isNotEmpty) {
+                        //         controller.generalError.value = '';
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
                         const SizedBox(height: 20),
 
                         // Email Field
@@ -228,61 +228,61 @@ class _SignUpViewState extends State<SignUpView> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Phone Number Field
-                        Obx(
-                          () => CustomTextField(
-                            labelText: 'Phone Number',
-                            hintText: 'Enter your phone number',
-                            controller: controller.phoneController.value,
-                            keyboardType: TextInputType.phone,
+                        // // Phone Number Field
+                        // Obx(
+                        //   () => CustomTextField(
+                        //     labelText: 'Phone Number',
+                        //     hintText: 'Enter your phone number',
+                        //     controller: controller.phoneController.value,
+                        //     keyboardType: TextInputType.phone,
 
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            inputFormatters: [PhoneNumberFormatter()],
-                            validator:
-                                (value) =>
-                                    controller.phoneError.value.isEmpty
-                                        ? null
-                                        : controller.phoneError.value,
-                            onChanged: (value) {
-                              if (controller.phoneError.value.isNotEmpty) {
-                                controller.phoneError.value = '';
-                              }
-                              if (controller.generalError.value.isNotEmpty) {
-                                controller.generalError.value = '';
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                        //     prefixIcon: const Icon(Icons.phone_outlined),
+                        //     inputFormatters: [PhoneNumberFormatter()],
+                        //     validator:
+                        //         (value) =>
+                        //             controller.phoneError.value.isEmpty
+                        //                 ? null
+                        //                 : controller.phoneError.value,
+                        //     onChanged: (value) {
+                        //       if (controller.phoneError.value.isNotEmpty) {
+                        //         controller.phoneError.value = '';
+                        //       }
+                        //       if (controller.generalError.value.isNotEmpty) {
+                        //         controller.generalError.value = '';
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 20),
 
-                        // Facebook Page ID Field (Optional)
-                        Obx(
-                          () => CustomTextField(
-                            labelText: 'Facebook Page ID (Optional)',
-                            hintText: 'Enter your Facebook page ID',
-                            controller:
-                                controller.facebookPageIdController.value,
-                            keyboardType: TextInputType.text,
+                        // // Facebook Page ID Field (Optional)
+                        // Obx(
+                        //   () => CustomTextField(
+                        //     labelText: 'Facebook Page ID (Optional)',
+                        //     hintText: 'Enter your Facebook page ID',
+                        //     controller:
+                        //         controller.facebookPageIdController.value,
+                        //     keyboardType: TextInputType.text,
 
-                            prefixIcon: const Icon(Icons.facebook_outlined),
-                            validator:
-                                (value) =>
-                                    controller.facebookPageIdError.value.isEmpty
-                                        ? null
-                                        : controller.facebookPageIdError.value,
-                            onChanged: (value) {
-                              if (controller
-                                  .facebookPageIdError
-                                  .value
-                                  .isNotEmpty) {
-                                controller.facebookPageIdError.value = '';
-                              }
-                              if (controller.generalError.value.isNotEmpty) {
-                                controller.generalError.value = '';
-                              }
-                            },
-                          ),
-                        ),
+                        //     prefixIcon: const Icon(Icons.facebook_outlined),
+                        //     validator:
+                        //         (value) =>
+                        //             controller.facebookPageIdError.value.isEmpty
+                        //                 ? null
+                        //                 : controller.facebookPageIdError.value,
+                        //     onChanged: (value) {
+                        //       if (controller
+                        //           .facebookPageIdError
+                        //           .value
+                        //           .isNotEmpty) {
+                        //         controller.facebookPageIdError.value = '';
+                        //       }
+                        //       if (controller.generalError.value.isNotEmpty) {
+                        //         controller.generalError.value = '';
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
                         const SizedBox(height: 20),
 
                         // Create Password Field

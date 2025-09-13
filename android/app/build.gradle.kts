@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = " "
+    namespace = "com.example.dedicated_cowboy"
     compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
