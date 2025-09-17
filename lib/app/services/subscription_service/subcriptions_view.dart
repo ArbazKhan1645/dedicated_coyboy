@@ -1,34 +1,32 @@
-// screens/subscription_management_screen.dart
-// ignore_for_file: use_build_context_synchronously
-
+// screens/final_subscription_management_screen.dart
 import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
-import 'package:dedicated_cowboy/app/services/stripe_services/payments_coins_controller.dart';
-import 'package:dedicated_cowboy/app/services/subscription_service/checkout.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/controller.dart';
+import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SubscriptionManagementScreen extends StatefulWidget {
+class FinalSubscriptionManagementScreen extends StatefulWidget {
   final String userId;
 
-  const SubscriptionManagementScreen({super.key, required this.userId});
+  const FinalSubscriptionManagementScreen({super.key, required this.userId});
 
   @override
-  State<SubscriptionManagementScreen> createState() =>
-      _SubscriptionManagementScreenState();
+  State<FinalSubscriptionManagementScreen> createState() =>
+      _FinalSubscriptionManagementScreenState();
 }
 
-class _SubscriptionManagementScreenState
-    extends State<SubscriptionManagementScreen> {
+class _FinalSubscriptionManagementScreenState
+    extends State<FinalSubscriptionManagementScreen> {
   late SubscriptionProvider controller;
-  late PaymentsCoinsController paymentController;
+  late WordPressExistingSubscriptionService subscriptionService;
 
   @override
   void initState() {
     super.initState();
     controller = Get.put(SubscriptionProvider());
-    paymentController = Get.put(PaymentsCoinsController());
+    subscriptionService = WordPressExistingSubscriptionService();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScreen();
@@ -36,17 +34,8 @@ class _SubscriptionManagementScreenState
   }
 
   Future<void> _initializeScreen() async {
-    // Save current user ID for offline operations
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('current_user_id', widget.userId);
-
-    // Check for incomplete payments
-    final incompletePayment = await paymentController.checkIncompletePayment();
-    if (incompletePayment != null) {
-      _showIncompletePaymentDialog(incompletePayment);
-    }
-
-    // Initialize subscription data
     await controller.initialize(widget.userId);
   }
 
@@ -139,13 +128,6 @@ class _SubscriptionManagementScreenState
               ),
               child: const Text('Retry'),
             ),
-            if (provider.error?.contains('internet') == true) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Some data may be available offline',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
           ],
         ),
       ),
@@ -177,23 +159,22 @@ class _SubscriptionManagementScreenState
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Connection status indicator
-              if (!provider.hasActiveSubscription)
-                _buildConnectionStatusIndicator(),
+              _buildConnectionStatusIndicator(),
 
-              // Current Subscription Status
-              if (provider.hasActiveSubscription)
-                _buildCurrentSubscriptionCard(provider),
+              // // Current Subscription Card (if active)
+              // if (provider.hasActiveSubscription &&
+              //     provider.currentSubscription != null)
+              //   _buildCurrentSubscriptionCard(provider),
 
               // Available Plans
               ...provider.availablePlans.map(
                 (plan) => _buildSubscriptionCard(
-                  plan.name,
-                  plan.price,
-                  plan.duration.toString(),
-                  plan.description,
-                  plan.features,
-                  isactive: plan.id == provider.currentSubscription?.plan.id,
+                  plan.title.rendered,
+                  double.tryParse(plan.fmPrice) ?? 0.0,
+                  "365 days",
+                  plan.fmDescription,
+                  _extractFeatures(plan),
+                  isactive: provider.currentSubscription?.id == plan.id,
                   onContinuePressed:
                       () => _handleContinuePressed(plan, provider),
                   oncancel: () => _showCancelDialog(context, provider),
@@ -207,6 +188,40 @@ class _SubscriptionManagementScreenState
         ),
       ),
     );
+  }
+
+  List<String> _extractFeatures(PricingPlan plan) {
+    List<String> features = [];
+
+    if (plan.listingContent == 'true' || plan.listingContent == '1') {
+      features.add('Create listings');
+    }
+    if (plan.pricing == 'true' || plan.pricing == '1') {
+      features.add('Set custom pricing');
+    }
+    if (plan.location == 'true' || plan.location == '1') {
+      features.add('Location support');
+    }
+    if (plan.category == 'true' || plan.category == '1') {
+      features.add('Category management');
+    }
+    if (plan.phone == 'true' || plan.phone == '1') {
+      features.add('Phone contact');
+    }
+    if (plan.email == 'true' || plan.email == '1') {
+      features.add('Email contact');
+    }
+
+    if (features.isEmpty) {
+      features = [
+        'Unlimited listings',
+        'Priority support',
+        'Advanced features',
+        'Analytics dashboard',
+      ];
+    }
+
+    return features;
   }
 
   Widget _buildConnectionStatusIndicator() {
@@ -294,7 +309,7 @@ class _SubscriptionManagementScreenState
             child: Column(
               children: [
                 Text(
-                  subscription.plan.name,
+                  subscription.title.rendered,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -312,11 +327,13 @@ class _SubscriptionManagementScreenState
                         isExpiringSoon ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Expiry Date: ${_formatDate(subscription.expiryDate)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
+                if (provider.subscriptionStatus['expiryDate'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Expiry Date: ${_formatDate(DateTime.parse(provider.subscriptionStatus['expiryDate']))}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
               ],
             ),
           ),
@@ -352,7 +369,6 @@ class _SubscriptionManagementScreenState
       ),
       child: Column(
         children: [
-          // Header section with title
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -374,19 +390,16 @@ class _SubscriptionManagementScreenState
               ),
             ),
           ),
-
-          // Content section
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Price section
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '\,',
+                      '£',
                       style: TextStyle(
                         color: Color(0xFF9CA3AF),
                         fontSize: 16,
@@ -417,7 +430,6 @@ class _SubscriptionManagementScreenState
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
                 const Text(
                   'Per Package',
@@ -427,10 +439,7 @@ class _SubscriptionManagementScreenState
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Description
                 Text(
                   description,
                   textAlign: TextAlign.center,
@@ -439,23 +448,17 @@ class _SubscriptionManagementScreenState
                     fontSize: 12,
                   ),
                 ),
-
                 const SizedBox(height: 12),
                 Divider(color: Colors.grey.shade300),
                 const SizedBox(height: 12),
-
-                // Features list
                 Column(
                   children:
                       features
                           .map((feature) => _buildFeatureItem(feature))
                           .toList(),
                 ),
-
                 const SizedBox(height: 24),
-
                 if (!isactive)
-                  // Continue button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -488,7 +491,6 @@ class _SubscriptionManagementScreenState
                               ),
                     ),
                   ),
-
                 if (isactive)
                   SizedBox(
                     width: double.infinity,
@@ -558,34 +560,25 @@ class _SubscriptionManagementScreenState
   }
 
   void _handleContinuePressed(
-    SubscriptionPlan plan,
+    PricingPlan plan,
     SubscriptionProvider provider,
   ) async {
-    // Check internet connection first
     final hasInternet = await controller.checkInternetConnection();
     if (!hasInternet) {
       _showNoInternetDialog();
       return;
     }
 
-    Get.to(
-      () => CheckoutScreen(
-        subscriptionPlan: plan,
-        onCheckout: () async {
-          await _processPayment(plan, provider);
-        },
-      ),
-    );
+    await _processPayment(plan, provider);
   }
 
   Future<void> _processPayment(
-    SubscriptionPlan plan,
+    PricingPlan plan,
     SubscriptionProvider provider,
   ) async {
     try {
       if (!mounted) return;
 
-      // Show processing dialog
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -610,98 +603,66 @@ class _SubscriptionManagementScreenState
             ),
       );
 
-      // final paymentResult = PaymentResult(
-      //   success: true,
-      //   paymentIntentId: 'stripe_payment_intent_id3254',
-      // );
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
 
-      // Process payment with enhanced error handling
-      final paymentResult = await paymentController.processPayment(
-        context,
-        plan.price.toDouble(),
+      if (currentUser == null) {
+        if (mounted) {
+          Navigator.of(context).pop();
+          _showErrorDialog('Authentication Error', 'User not authenticated');
+        }
+        return;
+      }
+
+      // Simulate payment processing - replace with actual Stripe integration
+      await Future.delayed(Duration(seconds: 2));
+
+      final mockTransactionId = 'txn_${DateTime.now().millisecondsSinceEpoch}';
+      final mockListingId = '${DateTime.now().millisecondsSinceEpoch}';
+
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => const AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFFF2B342)),
+                    SizedBox(height: 16),
+                    Text('Activating subscription...'),
+                  ],
+                ),
+              ),
+        );
+      }
+
+      final subscriptionResult = await provider.purchaseSubscription(
+        userId: widget.userId,
+        plan: plan,
+        stripeTransactionId: mockTransactionId,
+        listingId: mockListingId,
+        metadata: 'Flutter app purchase',
       );
 
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-      }
+        Navigator.of(context).pop();
 
-      if (paymentResult.success && paymentResult.paymentIntentId != null) {
-        // Payment successful, create subscription
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (context) => const AlertDialog(
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFFF2B342)),
-                      SizedBox(height: 16),
-                      Text('Activating subscription...'),
-                    ],
-                  ),
-                ),
-          );
-        }
-
-        final subscriptionResult = await provider.purchaseSubscription(
-          userId: widget.userId,
-          plan: plan,
-          stripePaymentIntentId: paymentResult.paymentIntentId!,
-          transactionId: 'stripe_${paymentResult.paymentIntentId}',
-          metadata: {
-            'platform': 'flutter',
-            'purchase_method': 'stripe',
-            'timestamp': DateTime.now().toIso8601String(),
-          },
-        );
-
-        if (mounted) {
-          Navigator.of(context).pop(); // Close loading dialog
-
-          if (subscriptionResult.success) {
-            // Close checkout screen
-            Navigator.of(context).pop();
-
-            _showSuccessDialog(plan.name);
-          } else {
-            _showErrorDialog(
-              'Subscription Error',
-              subscriptionResult.message,
-              showContactSupport: true,
-              paymentIntentId: paymentResult.paymentIntentId,
-            );
-          }
-        }
-      } else if (paymentResult.isCancelled) {
-        // Payment was cancelled by user
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment cancelled'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      } else {
-        // Payment failed
-        if (mounted) {
-          _showErrorDialog(
-            'Payment Failed',
-            paymentResult.error ?? 'Payment could not be processed',
-            showContactSupport: true,
-            paymentIntentId: paymentResult.paymentIntentId,
-          );
+        if (subscriptionResult.success) {
+          _showSuccessDialog(plan.title.rendered);
+        } else {
+          _showErrorDialog('Subscription Error', subscriptionResult.message);
         }
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close any open dialogs
+        Navigator.of(context).pop();
         _showErrorDialog(
           'Unexpected Error',
           'An unexpected error occurred: $e',
-          showContactSupport: true,
         );
       }
     }
@@ -774,12 +735,7 @@ class _SubscriptionManagementScreenState
     );
   }
 
-  void _showErrorDialog(
-    String title,
-    String? message, {
-    bool showContactSupport = false,
-    String? paymentIntentId,
-  }) {
+  void _showErrorDialog(String title, String? message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -794,54 +750,12 @@ class _SubscriptionManagementScreenState
               Expanded(child: Text(title)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message ?? 'An error occurred'),
-              if (showContactSupport) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'If you were charged but didn\'t receive your subscription, please contact support with the following information:',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                ),
-                if (paymentIntentId != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Payment ID: $paymentIntentId',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ],
-          ),
+          content: Text(message ?? 'An error occurred'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('OK'),
             ),
-            if (showContactSupport)
-              ElevatedButton(
-                onPressed: () {
-                  // Implement contact support functionality
-                  Navigator.of(context).pop();
-                  // You can add navigation to support screen or email functionality
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF2B342),
-                ),
-                child: const Text('Contact Support'),
-              ),
           ],
         );
       },
@@ -867,56 +781,6 @@ class _SubscriptionManagementScreenState
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showIncompletePaymentDialog(String paymentIntentId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Incomplete Payment Found'),
-          content: const Text(
-            'We found an incomplete payment from your previous session. Would you like us to check if it was completed?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                paymentController.reset();
-                Navigator.of(context).pop();
-                // Clear the incomplete payment
-              },
-              child: const Text('Ignore'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                // Check payment status and process if successful
-                final verified = await paymentController.verifyPaymentStatus(
-                  paymentIntentId,
-                );
-                if (verified) {
-                  // Process the subscription
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Payment verified! Processing subscription...',
-                      ),
-                      backgroundColor: Color(0xFFF2B342),
-                    ),
-                  );
-                  // Trigger subscription update
-                  controller.refreshstate(widget.userId);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF2B342),
-              ),
-              child: const Text('Check Payment'),
             ),
           ],
         );

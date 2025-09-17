@@ -136,30 +136,10 @@ class NavController extends GetxController {
       FirebaseNotificationService();
   Future<void> _initializeNotificationService() async {
     try {
-      final authService = Get.find<AuthService>();
-      final user = authService.currentUser;
-      try {
-        if (user != null) {
-          await SubscriptionService().initializeAndUpdatePaymentStatus(user.id);
-        } else {
-          debugPrint("Skipped initializeAndUpdatePaymentStatus: user is null");
-        }
-      } catch (e, s) {
-        debugPrint("Error in initializeAndUpdatePaymentStatus: $e");
-        debugPrintStack(stackTrace: s);
-      }
-
       try {
         await NotificationService().initialize();
       } catch (e, s) {
         debugPrint("Error in NotificationService.initialize: $e");
-        debugPrintStack(stackTrace: s);
-      }
-
-      try {
-        await SubscriptionService().initializeSubscriptionPlans();
-      } catch (e, s) {
-        debugPrint("Error in initializeSubscriptionPlans: $e");
         debugPrintStack(stackTrace: s);
       }
 

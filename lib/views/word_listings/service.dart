@@ -4,7 +4,8 @@ import 'package:dedicated_cowboy/views/word_listings/model.dart';
 import 'package:http/http.dart' as http;
 
 class WordPressListingService {
-  static final WordPressListingService _instance = WordPressListingService._internal();
+  static final WordPressListingService _instance =
+      WordPressListingService._internal();
   factory WordPressListingService() => _instance;
   WordPressListingService._internal();
 
@@ -30,20 +31,20 @@ class WordPressListingService {
   }) async {
     try {
       final queryParams = <String, dynamic>{};
-      
+
       if (page != null) queryParams['page'] = page.toString();
       if (perPage != null) queryParams['per_page'] = perPage.toString();
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
       if (slug != null && slug.isNotEmpty) queryParams['slug'] = slug;
       if (author != null) queryParams['author'] = author.toString();
-      
+
       // Handle categories
       if (categories != null && categories.isNotEmpty) {
         for (int i = 0; i < categories.length; i++) {
           queryParams['at_biz_dir-category[$i]'] = categories[i].toString();
         }
       }
-      
+
       // Handle listing types
       if (listingTypes != null && listingTypes.isNotEmpty) {
         for (int i = 0; i < listingTypes.length; i++) {
@@ -51,12 +52,19 @@ class WordPressListingService {
         }
       }
 
-      final uri = Uri.parse('$baseUrl$listingsEndpoint').replace(
-        queryParameters: queryParams,
-      );
+      Uri uri;
+      if (author != null) {
+        uri = Uri.parse(
+          'https://dedicatedcowboy.com/wp-json/custom/v1/directory-listings?author=$author&status=all',
+        );
+      } else {
+        uri = Uri.parse(
+          '$baseUrl$listingsEndpoint',
+        ).replace(queryParameters: queryParams);
+      }
 
       final response = await http.get(uri);
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((item) => UnifiedListing.fromJson(item)).toList();
@@ -69,7 +77,8 @@ class WordPressListingService {
   }
 
   /// Get listings by type (Item, Business, Event)
-  Future<List<UnifiedListing>> getListingsByType(String type, {
+  Future<List<UnifiedListing>> getListingsByType(
+    String type, {
     int? page = 1,
     int? perPage = 10,
   }) async {
@@ -90,15 +99,12 @@ class WordPressListingService {
       throw Exception('Invalid listing type: $type');
     }
 
-    return getAllListings(
-      page: page,
-      perPage: perPage,
-      listingTypes: [typeId],
-    );
+    return getAllListings(page: page, perPage: perPage, listingTypes: [typeId]);
   }
 
   /// Get listings by category
-  Future<List<UnifiedListing>> getListingsByCategory(List<int> categoryIds, {
+  Future<List<UnifiedListing>> getListingsByCategory(
+    List<int> categoryIds, {
     int? page = 1,
     int? perPage = 10,
     String? type,
@@ -127,19 +133,17 @@ class WordPressListingService {
   }
 
   /// Get user's listings
-  Future<List<UnifiedListing>> getUserListings(int userId, {
+  Future<List<UnifiedListing>> getUserListings(
+    int userId, {
     int? page = 1,
     int? perPage = 10,
   }) async {
-    return getAllListings(
-      page: page,
-      perPage: perPage,
-      author: userId,
-    );
+    return getAllListings(page: page, perPage: perPage, author: userId);
   }
 
   /// Search listings
-  Future<List<UnifiedListing>> searchListings(String query, {
+  Future<List<UnifiedListing>> searchListings(
+    String query, {
     int? page = 1,
     int? perPage = 10,
     String? type,
@@ -207,25 +211,29 @@ class WordPressListingService {
 
     // Apply client-side filters for price and location
     if (maxPrice != null) {
-      listings = listings.where((listing) {
-        if (listing.priceAsDouble == null) return true;
-        return listing.priceAsDouble! <= maxPrice;
-      }).toList();
+      listings =
+          listings.where((listing) {
+            if (listing.priceAsDouble == null) return true;
+            return listing.priceAsDouble! <= maxPrice;
+          }).toList();
     }
 
     if (latitude != null && longitude != null && radiusInMiles != null) {
-      listings = listings.where((listing) {
-        if (listing.latitude == null || listing.longitude == null) return false;
-        
-        double distance = _calculateDistance(
-          latitude,
-          longitude,
-          listing.latitude!,
-          listing.longitude!,
-        );
-        
-        return distance <= radiusInMiles;
-      }).toList();
+      listings =
+          listings.where((listing) {
+            if (listing.latitude == null || listing.longitude == null) {
+              return false;
+            }
+
+            double distance = _calculateDistance(
+              latitude,
+              longitude,
+              listing.latitude!,
+              listing.longitude!,
+            );
+
+            return distance <= radiusInMiles;
+          }).toList();
     }
 
     return listings;
@@ -234,8 +242,10 @@ class WordPressListingService {
   /// Get single listing by ID
   Future<UnifiedListing?> getListingById(int id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl$listingsEndpoint/$id'));
-      
+      final response = await http.get(
+        Uri.parse('$baseUrl$listingsEndpoint/$id'),
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return UnifiedListing.fromJson(data);
@@ -250,42 +260,33 @@ class WordPressListingService {
   // ==================== HELPER METHODS ====================
 
   /// Calculate distance between two coordinates in miles
-  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+  double _calculateDistance(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
     const double earthRadiusMiles = 3959.0;
     const double pi = 3.14159265359;
-    
+
     double lat1Rad = lat1 * (pi / 180.0);
     double lng1Rad = lng1 * (pi / 180.0);
     double lat2Rad = lat2 * (pi / 180.0);
     double lng2Rad = lng2 * (pi / 180.0);
-    
+
     double dLat = lat2Rad - lat1Rad;
     double dLng = lng2Rad - lng1Rad;
-    
-    double a = (sin(dLat / 2) * sin(dLat / 2)) +
+
+    double a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
         (cos(lat1Rad) * cos(lat2Rad) * sin(dLng / 2) * sin(dLng / 2));
-    
+
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    
+
     return earthRadiusMiles * c;
   }
 
   /// Convert category names to IDs (you'll need to maintain this mapping)
-  List<int> getCategoryIdsByNames(List<String> categoryNames) {
-    // You'll need to create this mapping based on your categories
-    final categoryMap = <String, int>{
-      'furniture': 338,
-      'decor': 340,
-      'womens': 285,
-      // Add more categories as needed
-    };
-
-    return categoryNames
-        .map((name) => categoryMap[name.toLowerCase()])
-        .where((id) => id != null)
-        .cast<int>()
-        .toList();
-  }
 
   /// Get listing type name from ID
   String getListingTypeName(int typeId) {
@@ -302,7 +303,7 @@ class WordPressListingService {
   }
 
   // ==================== STREAM WRAPPERS ====================
-  
+
   /// Convert Future to Stream for compatibility with existing UI code
   Stream<List<UnifiedListing>> getAllListingsStream({
     String? listingType,
@@ -345,24 +346,6 @@ class WordPressListingService {
     try {
       final events = await getListingsByType('event', perPage: 100);
       yield events;
-    } catch (e) {
-      yield [];
-    }
-  }
-
-  /// Get listings by category stream
-  Stream<List<UnifiedListing>> getListingsByCategoryStream(
-    List<String> categoryNames,
-    String listingType,
-  ) async* {
-    try {
-      final categoryIds = getCategoryIdsByNames(categoryNames);
-      final listings = await getListingsByCategory(
-        categoryIds,
-        type: listingType,
-        perPage: 100,
-      );
-      yield listings;
     } catch (e) {
       yield [];
     }

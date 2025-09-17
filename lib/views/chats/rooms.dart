@@ -1,19 +1,19 @@
 // Chat Rooms Controller
 import 'dart:async';
-
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class ChatRoomsController extends GetxController {
+  final authService = Get.find<AuthService>();
   final ChatService _chatService = ChatService.instance;
-  final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  String currentUserId = '';
 
   // Observable variables
   final RxList<ChatRoom> chatRooms = <ChatRoom>[].obs;
@@ -42,6 +42,7 @@ class ChatRoomsController extends GetxController {
   }
 
   void _initializeChatRooms() {
+    currentUserId = authService.currentUser?.id ?? '';
     isLoading.value = true;
 
     _chatRoomsSubscription = _chatService
@@ -54,10 +55,14 @@ class ChatRoomsController extends GetxController {
           },
           onError: (error) {
             isLoading.value = false;
-            Get.snackbar('Error', 'Failed to load chats',    snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),);
+            Get.snackbar(
+              'Error',
+              'Failed to load chats',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Color(0xFFF2B342),
+              colorText: Colors.white,
+              duration: const Duration(seconds: 2),
+            );
           },
         );
   }
@@ -118,7 +123,7 @@ class ChatRoomsController extends GetxController {
 
   Future<void> createNewChat({
     required String otherUserId,
-    required UserModel otherUser,
+    required ApiUserModel otherUser,
     String? productId,
     String? productTitle,
     String? productImage,
@@ -146,10 +151,14 @@ class ChatRoomsController extends GetxController {
         },
       );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to create chat',    snackPosition: SnackPosition.BOTTOM,
+      Get.snackbar(
+        'Error',
+        'Failed to create chat',
+        snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Color(0xFFF2B342),
         colorText: Colors.white,
-        duration: const Duration(seconds: 2),);
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -511,89 +520,8 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  void _showChatOptions(ChatRoom chatRoom, UserModel? user) {
-    Get.bottomSheet(
-      Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+ 
 
-            // User info
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.grey[300],
-                backgroundImage:
-                    user?.avatar != null
-                        ? CachedNetworkImageProvider(user!.avatar!)
-                        : null,
-                child:
-                    user?.avatar == null
-                        ? Text(
-                          (user?.displayName ?? '?')
-                              .substring(0, 1)
-                              .toUpperCase(),
-                        )
-                        : null,
-              ),
-              title: Text(user?.displayName ?? 'Unknown User'),
-              subtitle: Text(user?.isOnline == true ? 'Online' : 'Offline'),
-            ),
-
-            const Divider(),
-
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete Chat',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Get.back();
-                _showDeleteChatDialog(chatRoom, user);
-              },
-            ),
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteChatDialog(ChatRoom chatRoom, UserModel? user) {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Delete Chat'),
-        content: Text(
-          'Are you sure you want to delete your chat with ${user?.displayName ?? 'this user'}? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              // Implement delete chat
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _formatChatTime(DateTime dateTime) {
     final now = DateTime.now();

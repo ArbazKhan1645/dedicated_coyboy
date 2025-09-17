@@ -1,9 +1,10 @@
-// providers/subscription_provider.dart
+// providers/existing_subscription_provider.dart
 import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/connectivity.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
+
 import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,8 @@ enum SubscriptionState {
 }
 
 class SubscriptionProvider extends GetxController {
-  final SubscriptionService _subscriptionService = SubscriptionService();
+  final WordPressExistingSubscriptionService _subscriptionService =
+      WordPressExistingSubscriptionService();
   final NotificationService _notificationService = NotificationService();
   final ConnectivityService _connectivityService = ConnectivityService();
 
@@ -28,21 +30,28 @@ class SubscriptionProvider extends GetxController {
   final Rx<SubscriptionState> _state = SubscriptionState.initial.obs;
   SubscriptionState get state => _state.value;
 
-  UserSubscription? _currentSubscription;
-  List<SubscriptionPlan> _availablePlans = [];
-  final List<UserSubscription> _subscriptionHistory = [];
+  List<PricingPlan> _availablePlans = [];
+  PricingPlan? _currentSubscription;
+  Map<String, dynamic> _subscriptionStatus = {};
+
   String? _error;
 
   // Getters
-  UserSubscription? get currentSubscription => _currentSubscription;
-  List<SubscriptionPlan> get availablePlans => _availablePlans;
-  List<UserSubscription> get subscriptionHistory => _subscriptionHistory;
+  List<PricingPlan> get availablePlans => _availablePlans;
+  PricingPlan? get currentSubscription => _currentSubscription;
+  Map<String, dynamic> get subscriptionStatus => _subscriptionStatus;
+
   bool get isLoading =>
       _state.value == SubscriptionState.loading ||
       _state.value == SubscriptionState.purchasing;
+
   String? get error => _error;
-  bool get hasActiveSubscription => _currentSubscription?.isActive == true;
-  bool get canUserList => hasActiveSubscription;
+
+  bool get hasActiveSubscription => _subscriptionStatus['isActive'] == true;
+  bool get canUserList => _subscriptionStatus['canList'] == true;
+  int get daysRemaining => _subscriptionStatus['daysRemaining'] ?? 0;
+  bool get isExpiringSoon => daysRemaining <= 7 && daysRemaining > 0;
+  String? get stripeCustomerId => _subscriptionStatus['stripeCustomerId'];
 
   @override
   void onInit() {
@@ -58,7 +67,7 @@ class SubscriptionProvider extends GetxController {
     });
   }
 
-  // Initialize provider with comprehensive error handling
+  // Initialize provider using your existing WordPress system
   Future<void> initialize(String userId) async {
     try {
       _setState(SubscriptionState.loading);
@@ -70,10 +79,8 @@ class SubscriptionProvider extends GetxController {
         await Future.wait([
           loadAvailablePlans(),
           loadCurrentSubscription(userId),
+          loadSubscriptionStatus(),
         ]);
-
-        // Check for pending payment updates
-        await _checkPendingPayments(userId);
       } else {
         // Load from cache when offline
         await _loadFromCache();
@@ -86,7 +93,7 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Load available subscription plans with caching
+  // Load available subscription plans from WordPress
   Future<void> loadAvailablePlans() async {
     try {
       final hasInternet = await _connectivityService.hasConnection();
@@ -105,7 +112,7 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Load current subscription with offline support
+  // Load current subscription from WordPress
   Future<void> loadCurrentSubscription(
     String userId, {
     bool forceRefresh = false,
@@ -114,8 +121,9 @@ class SubscriptionProvider extends GetxController {
       final hasInternet = await _connectivityService.hasConnection();
 
       if (hasInternet || forceRefresh) {
-        _currentSubscription = await _subscriptionService
-            .getCurrentSubscription(userId, forceRefresh: forceRefresh);
+        // First refresh user data to get latest meta
+        await _subscriptionService.refreshUserData();
+        _currentSubscription = await _subscriptionService.getCurrentUserPlan();
         await _cacheSubscription();
       } else {
         await _loadSubscriptionFromCache();
@@ -128,13 +136,22 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Enhanced purchase subscription with robust error handling
+  // Load subscription status from WordPress user meta
+  Future<void> loadSubscriptionStatus() async {
+    try {
+      _subscriptionStatus = await _subscriptionService.getSubscriptionStatus();
+    } catch (e) {
+      _setError('Failed to load subscription status: $e');
+    }
+  }
+
+  // Process Stripe payment using your existing system
   Future<PurchaseResult> purchaseSubscription({
     required String userId,
-    required SubscriptionPlan plan,
-    required String stripePaymentIntentId,
-    String? transactionId,
-    Map<String, dynamic>? metadata,
+    required PricingPlan plan,
+    required String stripeTransactionId,
+    String? listingId,
+    String? metadata,
   }) async {
     try {
       _setState(SubscriptionState.purchasing);
@@ -147,8 +164,8 @@ class SubscriptionProvider extends GetxController {
         await _savePendingPurchase(
           userId,
           plan,
-          stripePaymentIntentId,
-          transactionId,
+          stripeTransactionId,
+          listingId,
           metadata,
         );
         return PurchaseResult(
@@ -159,70 +176,56 @@ class SubscriptionProvider extends GetxController {
         );
       }
 
-      // Verify payment with Stripe before creating subscription
-      final paymentVerified = await _subscriptionService.verifyStripePayment(
-        stripePaymentIntentId,
-      );
-      if (!paymentVerified) {
-        _setError('Payment verification failed');
-        _setState(SubscriptionState.error);
-        return PurchaseResult(
-          success: false,
-          message: 'Payment verification failed',
-        );
-      }
-
-      // Create subscription record
-      final subscriptionResult = await _subscriptionService.createSubscription(
-        userId: userId,
-        plan: plan,
-        stripePaymentIntentId: stripePaymentIntentId,
-        transactionId: transactionId,
-        metadata: metadata,
-      );
+      // Create subscription order in your existing WordPress system
+      final subscriptionResult = await _subscriptionService
+          .createSubscriptionOrder(
+            planId: plan.id.toString(),
+            amount: plan.fmPrice,
+            transactionId: stripeTransactionId,
+            listingId:
+                listingId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          );
 
       if (subscriptionResult.success) {
-        // Update payment status for user's listings
-        await _updateUserListingsPaymentStatus(userId);
-
-        // Reload current subscription
+        // Reload current subscription and status
         await loadCurrentSubscription(userId, forceRefresh: true);
+        await loadSubscriptionStatus();
 
         // Show success notification
         await _notificationService.showSubscriptionActivatedNotification(
-          plan.name,
+          plan.title.rendered,
         );
 
+        // Send welcome email
         try {
           final authService = Get.find<AuthService>();
-          final user = authService.currentUser;
+          final currentUser = authService.currentUser;
 
-          if (user != null) {
+          if (currentUser != null) {
             await EmailTemplates.sendSubscriptionWelcomeEmail(
-              recipientEmail: user.email,
-              recipientName: user.displayName,
-              orderId: plan.name,
-              totalAmount: '\$${plan.price}',
+              recipientEmail: currentUser.email ?? '',
+              recipientName: currentUser.displayName ?? 'User',
+              orderId: stripeTransactionId,
+              totalAmount: '£${plan.fmPrice}',
               orderDetailsUrl: '',
             );
           }
         } catch (e) {
-          print(e);
+          print('Error sending welcome email: $e');
         }
+
         _setState(SubscriptionState.purchased);
         return PurchaseResult(
           success: true,
           message: 'Subscription activated successfully',
+          subscriptionId: plan.id.toString(),
         );
       } else {
-        _setError(
-          subscriptionResult.message ?? 'Failed to activate subscription',
-        );
+        _setError(subscriptionResult.message);
         _setState(SubscriptionState.error);
         return PurchaseResult(
           success: false,
-          message:
-              subscriptionResult.message ?? 'Failed to activate subscription',
+          message: subscriptionResult.message,
         );
       }
     } catch (e) {
@@ -233,8 +236,8 @@ class SubscriptionProvider extends GetxController {
       await _savePendingPurchase(
         userId,
         plan,
-        stripePaymentIntentId,
-        transactionId,
+        stripeTransactionId,
+        listingId,
         metadata,
       );
 
@@ -246,17 +249,7 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Update payment status for user's listings
-  Future<void> _updateUserListingsPaymentStatus(String userId) async {
-    try {
-      await _subscriptionService.updateUserListingsPaymentStatus(userId);
-    } catch (e) {
-      print('Error updating listing payment status: $e');
-      // Don't fail the subscription process for this
-    }
-  }
-
-  // Cancel subscription with proper state management
+  // Cancel subscription using your existing system
   Future<bool> cancelSubscription(String userId) async {
     try {
       _setState(SubscriptionState.loading);
@@ -269,11 +262,12 @@ class SubscriptionProvider extends GetxController {
         return false;
       }
 
-      final success = await _subscriptionService.cancelSubscription(userId);
+      final success = await _subscriptionService.cancelSubscription();
 
       if (success) {
-        _currentSubscription = null;
         await _clearSubscriptionCache();
+        await loadCurrentSubscription(userId, forceRefresh: true);
+        await loadSubscriptionStatus();
         _setState(SubscriptionState.cancelled);
         return true;
       } else {
@@ -288,56 +282,33 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Check for pending payments and process them
-  Future<void> _checkPendingPayments(String userId) async {
+  // Get subscription history from your existing orders
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final pendingPayments =
-          prefs.getStringList('pending_payments_$userId') ?? [];
-
-      for (final paymentData in pendingPayments) {
-        final payment = jsonDecode(paymentData);
-        final stripeIntentId = payment['stripePaymentIntentId'];
-
-        // Verify if payment was actually processed
-        final isProcessed = await _subscriptionService.verifyStripePayment(
-          stripeIntentId,
-        );
-        if (isProcessed) {
-          // Check if subscription already exists
-          final existingSubscription = await _subscriptionService
-              .getSubscriptionByStripeIntent(stripeIntentId);
-          if (existingSubscription == null) {
-            // Create the subscription that was missed
-            final plan = SubscriptionPlan.fromMap(payment['plan']);
-            await _subscriptionService.createSubscription(
-              userId: userId,
-              plan: plan,
-              stripePaymentIntentId: stripeIntentId,
-              transactionId: payment['transactionId'],
-              metadata: Map<String, dynamic>.from(payment['metadata'] ?? {}),
-            );
-
-            // Update listing payment status
-            await _updateUserListingsPaymentStatus(userId);
-          }
-        }
-      }
-
-      // Clear processed pending payments
-      await prefs.remove('pending_payments_$userId');
+      return await _subscriptionService.getSubscriptionHistory();
     } catch (e) {
-      print('Error checking pending payments: $e');
+      print('Error getting subscription history: $e');
+      return [];
+    }
+  }
+
+  // Check if user needs to renew subscription
+  Future<bool> needsRenewal() async {
+    try {
+      return await _subscriptionService.needsRenewal();
+    } catch (e) {
+      print('Error checking renewal status: $e');
+      return false;
     }
   }
 
   // Save pending purchase for later processing
   Future<void> _savePendingPurchase(
     String userId,
-    SubscriptionPlan plan,
-    String stripePaymentIntentId,
-    String? transactionId,
-    Map<String, dynamic>? metadata,
+    PricingPlan plan,
+    String transactionId,
+    String? listingId,
+    String? metadata,
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -346,9 +317,10 @@ class SubscriptionProvider extends GetxController {
 
       final pendingPayment = {
         'userId': userId,
-        'plan': plan.toMap(),
-        'stripePaymentIntentId': stripePaymentIntentId,
+        'planId': plan.id.toString(),
+        'planData': plan.toJson(),
         'transactionId': transactionId,
+        'listingId': listingId,
         'metadata': metadata,
         'timestamp': DateTime.now().toIso8601String(),
       };
@@ -360,16 +332,47 @@ class SubscriptionProvider extends GetxController {
     }
   }
 
-  // Process any pending operations when connectivity is restored
+  // Process pending operations when connectivity is restored
   Future<void> _processPendingOperations() async {
-    // This will be called when internet connection is restored
-    // Re-check pending payments and process them
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('current_user_id');
-      if (userId != null) {
-        await _checkPendingPayments(userId);
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser != null) {
+        final userId = currentUser.id.toString();
+        final pendingPayments =
+            prefs.getStringList('pending_payments_$userId') ?? [];
+
+        for (final paymentData in pendingPayments) {
+          final payment = jsonDecode(paymentData);
+
+          try {
+            final result = await _subscriptionService.createSubscriptionOrder(
+              planId: payment['planId'],
+              amount: payment['planData']['fmPrice'],
+              transactionId: payment['transactionId'],
+              listingId:
+                  payment['listingId'] ??
+                  DateTime.now().millisecondsSinceEpoch.toString(),
+            );
+
+            if (result.success) {
+              print(
+                'Successfully processed pending payment: ${payment['transactionId']}',
+              );
+            }
+          } catch (e) {
+            print('Error processing pending payment: $e');
+          }
+        }
+
+        // Clear processed pending payments
+        await prefs.remove('pending_payments_$userId');
+
+        // Refresh subscription data
         await loadCurrentSubscription(userId, forceRefresh: true);
+        await loadSubscriptionStatus();
       }
     } catch (e) {
       print('Error processing pending operations: $e');
@@ -380,8 +383,12 @@ class SubscriptionProvider extends GetxController {
   Future<void> _cachePlans() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final plansJson = _availablePlans.map((plan) => plan.toMap()).toList();
+      final plansJson = _availablePlans.map((plan) => plan.toJson()).toList();
       await prefs.setString('cached_plans', jsonEncode(plansJson));
+      await prefs.setString(
+        'plans_cache_time',
+        DateTime.now().toIso8601String(),
+      );
     } catch (e) {
       print('Error caching plans: $e');
     }
@@ -391,10 +398,18 @@ class SubscriptionProvider extends GetxController {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedPlansString = prefs.getString('cached_plans');
-      if (cachedPlansString != null) {
-        final List<dynamic> plansJson = jsonDecode(cachedPlansString);
-        _availablePlans =
-            plansJson.map((json) => SubscriptionPlan.fromMap(json)).toList();
+      final cacheTimeString = prefs.getString('plans_cache_time');
+
+      if (cachedPlansString != null && cacheTimeString != null) {
+        final cacheTime = DateTime.parse(cacheTimeString);
+        final cacheAge = DateTime.now().difference(cacheTime);
+
+        // Use cache if it's less than 1 hour old
+        if (cacheAge.inHours < 1) {
+          final List<dynamic> plansJson = jsonDecode(cachedPlansString);
+          _availablePlans =
+              plansJson.map((json) => PricingPlan.fromJson(json)).toList();
+        }
       }
     } catch (e) {
       print('Error loading plans from cache: $e');
@@ -407,7 +422,11 @@ class SubscriptionProvider extends GetxController {
       if (_currentSubscription != null) {
         await prefs.setString(
           'cached_subscription',
-          jsonEncode(_currentSubscription!.toFirestore()),
+          jsonEncode(_currentSubscription!.toJson()),
+        );
+        await prefs.setString(
+          'subscription_cache_time',
+          DateTime.now().toIso8601String(),
         );
       }
     } catch (e) {
@@ -418,10 +437,18 @@ class SubscriptionProvider extends GetxController {
   Future<void> _loadSubscriptionFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedSubString = prefs.getString('cached_subscription');
-      if (cachedSubString != null) {
-        final subData = jsonDecode(cachedSubString);
-        _currentSubscription = UserSubscription.fromFirestore(subData);
+      final cachedSubscriptionString = prefs.getString('cached_subscription');
+      final cacheTimeString = prefs.getString('subscription_cache_time');
+
+      if (cachedSubscriptionString != null && cacheTimeString != null) {
+        final cacheTime = DateTime.parse(cacheTimeString);
+        final cacheAge = DateTime.now().difference(cacheTime);
+
+        // Use cache if it's less than 30 minutes old
+        if (cacheAge.inMinutes < 30) {
+          final subscriptionJson = jsonDecode(cachedSubscriptionString);
+          _currentSubscription = PricingPlan.fromJson(subscriptionJson);
+        }
       }
     } catch (e) {
       print('Error loading subscription from cache: $e');
@@ -432,6 +459,8 @@ class SubscriptionProvider extends GetxController {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('cached_subscription');
+      await prefs.remove('subscription_cache_time');
+      _currentSubscription = null;
     } catch (e) {
       print('Error clearing subscription cache: $e');
     }
@@ -457,12 +486,6 @@ class SubscriptionProvider extends GetxController {
     update();
   }
 
-  // Get subscription analytics
-  int get daysRemaining => _currentSubscription?.daysRemaining ?? 0;
-  int get hoursRemaining => _currentSubscription?.hoursRemaining ?? 0;
-  bool get isExpiringSoon => daysRemaining <= 3 && daysRemaining > 0;
-  SubscriptionType? get subscriptionType => _currentSubscription?.plan.type;
-
   // Refresh all data
   Future<void> refreshstate(String userId) async {
     await initialize(userId);
@@ -487,12 +510,4 @@ class PurchaseResult {
     this.isPending = false,
     this.subscriptionId,
   });
-}
-
-class SubscriptionResult {
-  final bool success;
-  final String? message;
-  final UserSubscription? subscription;
-
-  SubscriptionResult({required this.success, this.message, this.subscription});
 }

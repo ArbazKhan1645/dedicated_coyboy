@@ -10,7 +10,6 @@ import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_no
 import 'package:dedicated_cowboy/bindings/initial_bindings.dart';
 import 'package:dedicated_cowboy/firebase_options.dart';
 import 'package:dedicated_cowboy/views/welcome/welcome_view.dart';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -43,7 +42,7 @@ Future<void> main() async {
 
   final ai_chat_service = AIChatService(
     apiKey:
-        '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',
+        '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',
     baseUrl: 'https://api.openai.com/v1',
     systemPrompt:
         "want to rewrite the description , for instant enchance the very short description, i am passing the original description . the original description is:",

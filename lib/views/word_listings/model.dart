@@ -66,30 +66,39 @@ class UnifiedListing {
     String? featuredImage;
 
     // 1. Extract from yoast_head_json.og_image
-    final yoastHead = json['yoast_head'] as String?;
+    final yoastHead = json['image_urls'] as Map<String, dynamic>?;
     if (yoastHead != null) {
-      final regex = RegExp(r'<meta property="og:image" content="([^"]+)"');
-      final match = regex.firstMatch(yoastHead);
-      if (match != null) {
-        final imageUrl = match.group(1);
-        if (imageUrl != null) {
-          print(json['title']?['rendered']);
-          print(imageUrl);
-          extractedImages.add(
-            ListingImage(
-              url: imageUrl,
-              width: null,
-              height: null,
-              type: 'image/jpeg',
-              source: 'yoast_head',
-            ),
-          );
-          featuredImage ??= imageUrl;
+      featuredImage =
+          yoastHead['featured_thumb'] ??
+          yoastHead['featured_medium'] ??
+          yoastHead['featured'];
+      extractedImages.add(
+        ListingImage(
+          url: featuredImage,
+          width: null,
+          height: null,
+          type: 'image/jpeg',
+          source: 'yoast_head',
+        ),
+      );
+      if (yoastHead['gallery'] != null) {
+        final gallery = yoastHead['gallery'] as List<dynamic>?;
+        if (gallery != null) {
+          for (final imageUrl in gallery) {
+            extractedImages.add(
+              ListingImage(
+                url: imageUrl,
+                width: null,
+                height: null,
+                type: 'image/jpeg',
+                source: 'yoast_head',
+              ),
+            );
+          }
         }
       }
     }
 
- 
     // if (json['_listing_img'] != null && json['_listing_img'] is Map) {
     //   final listingImgMap = json['_listing_img'] as Map<String, dynamic>;
     //   // These are typically image IDs, you might need to construct URLs

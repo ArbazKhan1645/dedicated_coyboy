@@ -1,25 +1,168 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dedicated_cowboy/app/services/listings_service.dart';
-import 'package:dedicated_cowboy/app/services/favorite_service/fav_service.dart';
-import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
-import 'package:dedicated_cowboy/views/listing/bussiness_listing/list_an_bussines.dart';
-import 'package:dedicated_cowboy/views/listing/bussiness_listing/list_bussiness_form.dart';
-import 'package:dedicated_cowboy/views/listing/events_listings/list_item_form.dart';
-import 'package:dedicated_cowboy/views/listing/item_listing/list_item_form.dart';
-import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
+import 'package:dedicated_cowboy/views/word_listings/model.dart';
+import 'package:dedicated_cowboy/views/word_listings/service.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/business_model.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/event_model.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+// New Listing Model
+class Listing {
+  final int id;
+  final String title;
+  final String content;
+  final String status;
+  final String dateCreated;
+  final String dateModified;
+  final String authorId;
+  final String address;
+  final String? latitude;
+  final String? longitude;
+  final String price;
+  final String phone;
+  final String email;
+  final String customText;
+  final String expiryDate;
+  final Map<String, dynamic>? featuredImage;
+  final List<Map<String, dynamic>>? galleryImages;
+  final List<Map<String, dynamic>>? categories;
+  final List<Map<String, dynamic>>? listingTypes;
+  final List<Map<String, dynamic>>? locations;
+
+  Listing({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.status,
+    required this.dateCreated,
+    required this.dateModified,
+    required this.authorId,
+    required this.address,
+    this.latitude,
+    this.longitude,
+    required this.price,
+    required this.phone,
+    required this.email,
+    required this.customText,
+    required this.expiryDate,
+    this.featuredImage,
+    this.galleryImages,
+    this.categories,
+    this.listingTypes,
+    this.locations,
+  });
+
+  factory Listing.fromJson(Map<String, dynamic> json) {
+    return Listing(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      status: json['status'] ?? '',
+      dateCreated: json['date_created'] ?? '',
+      dateModified: json['date_modified'] ?? '',
+      authorId: json['author_id']?.toString() ?? '',
+      address: json['address'] ?? '',
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      price: json['price']?.toString() ?? '',
+      phone: json['phone'] ?? '',
+      email: json['email'] ?? '',
+      customText: json['custom_text'] ?? '',
+      expiryDate: json['expiry_date'] ?? '',
+      featuredImage: json['featured_image'],
+      galleryImages: json['gallery_images']?.cast<Map<String, dynamic>>(),
+      categories: json['categories']?.cast<Map<String, dynamic>>(),
+      listingTypes: json['listing_types']?.cast<Map<String, dynamic>>(),
+      locations: json['locations']?.cast<Map<String, dynamic>>(),
+    );
+  }
+
+  // Helper getters for compatibility
+  String get cleanContent => content.replaceAll(RegExp(r'<[^>]*>'), '');
+
+  String get listingType {
+    if (listingTypes != null && listingTypes!.isNotEmpty) {
+      return listingTypes!.first['name']?.toString().toLowerCase() ?? 'item';
+    }
+    return 'item';
+  }
+
+  bool get isItem => listingType == 'item';
+  bool get isBusiness => listingType == 'business';
+  bool get isEvent => listingType == 'event';
+
+  double? get priceAsDouble {
+    if (price.isEmpty) return null;
+    return double.tryParse(price);
+  }
+
+  String? get featuredImageUrl {
+    return featuredImage?['full'];
+  }
+
+  List<String>? get categoryNames {
+    return categories?.map((cat) => cat['name']?.toString() ?? '').toList();
+  }
+
+  DateTime? get createdAt {
+    return DateTime.tryParse(dateCreated);
+  }
+}
+
+// API Service for direct calls
+class ListingApiService {
+  static const String baseUrl = 'https://dedicatedcowboy.com/wp-json/cowboy/v1';
+
+  Future<List<Listing>> getUserListings(int authorId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/listings?author=$authorId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List)
+              .map((item) => Listing.fromJson(item))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching user listings: $e');
+      return [];
+    }
+  }
+
+  Future<Listing?> getListingById(int listingId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/listings/$listingId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Listing.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching listing $listingId: $e');
+      return null;
+    }
+  }
+}
 
 class ListingFavoritesScreen extends StatefulWidget {
   const ListingFavoritesScreen({super.key});
@@ -41,31 +184,29 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
   Position? _userLocation;
   bool _isLoadingLocation = false;
 
-  // Firebase services
-  final FirebaseServices _firebaseServices = FirebaseServices();
-  final FavoritesService _favoritesService = FavoritesService();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // API service for user listings only
+  final ListingApiService _listingService = ListingApiService();
 
-  // Data streams for My Listings
-  Stream<List<ItemListing>>? _itemsStream;
-  Stream<List<BusinessListing>>? _businessesStream;
-  Stream<List<EventListing>>? _eventsStream;
+  // Old service for favorites
+  final WordPressListingService _favoriteListingService =
+      WordPressListingService();
+  final AuthService _authService = AuthService();
+
+  // Data lists
+  List<Listing> _userListings = [];
+  List<UnifiedListing> _favoriteListings = [];
+  List<Listing> _filteredUserListings = [];
+  List<UnifiedListing> _filteredFavoriteListings = [];
+
+  bool _isLoadingUserListings = true;
+  bool _isLoadingFavorites = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _searchController.addListener(_onSearchChanged);
-    _initializeStreams();
-  }
-
-  void _initializeStreams() {
-    final currentUser = _auth.currentUser;
-    if (currentUser != null) {
-      _itemsStream = _firebaseServices.getUserItems(currentUser.uid);
-      _businessesStream = _firebaseServices.getUserBusinesses(currentUser.uid);
-      _eventsStream = _firebaseServices.getUserEvents(currentUser.uid);
-    }
+    _loadData();
   }
 
   @override
@@ -78,7 +219,235 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
   void _onSearchChanged() {
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
+      _applyFilters();
     });
+  }
+
+  Future<void> _loadData() async {
+    // Refresh user info first to get updated favorite IDs
+    await _refreshUserInfo();
+
+    await Future.wait([_loadUserListings(), _loadFavoriteListings()]);
+  }
+
+  Future<void> _refreshUserInfo() async {
+    try {
+      // Refresh user data from your auth service to get updated favorites
+      await _authService.refreshUser(); // You'll need to implement this method
+    } catch (e) {
+      print('Error refreshing user info: $e');
+    }
+  }
+
+  Future<void> _loadUserListings() async {
+    setState(() {
+      _isLoadingUserListings = true;
+    });
+
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser?.id != null) {
+        final listings = await _listingService.getUserListings(
+          int.tryParse(currentUser?.id ?? '') ?? 0,
+        );
+
+        setState(() {
+          _userListings = listings;
+          _isLoadingUserListings = false;
+        });
+        _applyFilters();
+      } else {
+        setState(() {
+          _userListings = [];
+          _isLoadingUserListings = false;
+        });
+        _applyFilters();
+      }
+    } catch (e) {
+      print('Error loading user listings: $e');
+      setState(() {
+        _userListings = [];
+        _isLoadingUserListings = false;
+      });
+      _applyFilters();
+    }
+  }
+
+  Future<void> _loadFavoriteListings() async {
+    setState(() {
+      _isLoadingFavorites = true;
+    });
+
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser?.favouriteListings != null &&
+          currentUser!.favouriteListings!.isNotEmpty) {
+        List<UnifiedListing> favorites = [];
+
+        // Fetch each favorite listing by ID using the old service
+        for (int listingId in currentUser.favouriteListings!) {
+          try {
+            final listing = await _favoriteListingService.getListingById(
+              listingId,
+            );
+            if (listing != null) {
+              favorites.add(listing);
+            }
+          } catch (e) {
+            print('Error fetching listing $listingId: $e');
+          }
+        }
+
+        setState(() {
+          _favoriteListings = favorites;
+          _isLoadingFavorites = false;
+        });
+      } else {
+        setState(() {
+          _favoriteListings = [];
+          _isLoadingFavorites = false;
+        });
+      }
+      _applyFilters();
+    } catch (e) {
+      print('Error loading favorite listings: $e');
+      setState(() {
+        _favoriteListings = [];
+        _isLoadingFavorites = false;
+      });
+      _applyFilters();
+    }
+  }
+
+  void _applyFilters() {
+    _filteredUserListings = _filterUserListings(_userListings);
+    _filteredFavoriteListings = _filterListings(_favoriteListings);
+  }
+
+  List<UnifiedListing> _filterListings(List<UnifiedListing> listings) {
+    List<UnifiedListing> filtered = List.from(listings);
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered =
+          filtered.where((listing) {
+            final title = listing.title?.toLowerCase() ?? '';
+            final content = listing.cleanContent.toLowerCase();
+            return title.contains(_searchQuery) ||
+                content.contains(_searchQuery);
+          }).toList();
+    }
+
+    // Category filter
+    // if (_selectedCategory != 'All') {
+    //   filtered = filtered.where((listing) {
+    //     return listing.categories?.any((cat) =>
+    //       cat.toLowerCase() == _selectedCategory.toLowerCase()) ?? false;
+    //   }).toList();
+    // }
+
+    // Location filter
+    if (_selectedLocation != 'All' && _userLocation != null) {
+      filtered =
+          filtered.where((listing) {
+            if (listing.latitude == null || listing.longitude == null) {
+              return false;
+            }
+            return _isWithinSelectedRadius(
+              listing.latitude!,
+              listing.longitude!,
+            );
+          }).toList();
+    }
+
+    // Price filter (only for items)
+    if (_selectedPrice != 'All') {
+      filtered =
+          filtered.where((listing) {
+            if (!listing.isItem || listing.priceAsDouble == null) return true;
+
+            double price = listing.priceAsDouble!;
+            switch (_selectedPrice) {
+              case '\$0-\$50':
+                return price <= 50;
+              case '\$50-\$100':
+                return price > 50 && price <= 100;
+              case '\$100-\$200':
+                return price > 100 && price <= 200;
+              case '\$200+':
+                return price > 200;
+              default:
+                return true;
+            }
+          }).toList();
+    }
+
+    return filtered;
+  }
+
+  // Separate filter method for user listings (new Listing model)
+  List<Listing> _filterUserListings(List<Listing> listings) {
+    List<Listing> filtered = List.from(listings);
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered =
+          filtered.where((listing) {
+            final title = listing.title.toLowerCase();
+            final content = listing.cleanContent.toLowerCase();
+            return title.contains(_searchQuery) ||
+                content.contains(_searchQuery);
+          }).toList();
+    }
+
+    // Category filter
+    if (_selectedCategory != 'All') {
+      filtered =
+          filtered.where((listing) {
+            return listing.categoryNames?.any(
+                  (cat) => cat.toLowerCase() == _selectedCategory.toLowerCase(),
+                ) ??
+                false;
+          }).toList();
+    }
+
+    // Location filter
+    if (_selectedLocation != 'All' && _userLocation != null) {
+      filtered =
+          filtered.where((listing) {
+            if (listing.latitude == null || listing.longitude == null) {
+              return false;
+            }
+            return _isWithinSelectedRadius(
+              double.parse(listing.latitude!),
+              double.parse(listing.longitude!),
+            );
+          }).toList();
+    }
+
+    // Price filter (only for items)
+    if (_selectedPrice != 'All') {
+      filtered =
+          filtered.where((listing) {
+            if (!listing.isItem || listing.priceAsDouble == null) return true;
+
+            double price = listing.priceAsDouble!;
+            switch (_selectedPrice) {
+              case '\$0-\$50':
+                return price <= 50;
+              case '\$50-\$100':
+                return price > 50 && price <= 100;
+              case '\$100-\$200':
+                return price > 100 && price <= 200;
+              case '\$200+':
+                return price > 200;
+              default:
+                return true;
+            }
+          }).toList();
+    }
+
+    return filtered;
   }
 
   Future<void> _getUserLocation() async {
@@ -86,7 +455,6 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
       _isLoadingLocation = true;
     });
 
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -107,62 +475,26 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     );
 
     try {
-      bool serviceEnabled;
-      LocationPermission permission;
-
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        Navigator.pop(context); // Close loading dialog
-        Get.snackbar(
-          'Location Error',
-          'Location services are disabled.',
-     snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        );
-        setState(() {
-          _selectedLocation = 'All';
-          _isLoadingLocation = false;
-        });
+        Navigator.pop(context);
+        _showLocationError('Location services are disabled.');
         return;
       }
 
-      permission = await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          Navigator.pop(context); // Close loading dialog
-          Get.snackbar(
-            'Location Error',
-            'Location permissions are denied',
-    snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-          );
-          setState(() {
-            _selectedLocation = 'All';
-            _isLoadingLocation = false;
-          });
+          Navigator.pop(context);
+          _showLocationError('Location permissions are denied');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        Navigator.pop(context); // Close loading dialog
-        Get.snackbar(
-          'Location Error',
-          'Location permissions are permanently denied, we cannot request permissions.',
-         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        );
-        setState(() {
-          _selectedLocation = 'All';
-          _isLoadingLocation = false;
-        });
+        Navigator.pop(context);
+        _showLocationError('Location permissions are permanently denied');
         return;
       }
 
@@ -175,22 +507,27 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
         _isLoadingLocation = false;
       });
 
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
+      _applyFilters();
     } catch (e) {
-      Navigator.pop(context); // Close loading dialog
-      Get.snackbar(
-        'Location Error',
-        'Failed to get location: $e',
-   snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
-      setState(() {
-        _selectedLocation = 'All';
-        _isLoadingLocation = false;
-      });
+      Navigator.pop(context);
+      _showLocationError('Failed to get location: $e');
     }
+  }
+
+  void _showLocationError(String message) {
+    Get.snackbar(
+      'Location Error',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Color(0xFFF2B342),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+    );
+    setState(() {
+      _selectedLocation = 'All';
+      _isLoadingLocation = false;
+    });
   }
 
   double _calculateDistance(
@@ -199,15 +536,11 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     double lat2,
     double lon2,
   ) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
-        1609.34; // Convert meters to miles
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1609.34;
   }
 
-  bool _isWithinSelectedRadius(double? lat, double? lon) {
-    if (_selectedLocation == 'All' ||
-        _userLocation == null ||
-        lat == null ||
-        lon == null) {
+  bool _isWithinSelectedRadius(double lat, double lon) {
+    if (_selectedLocation == 'All' || _userLocation == null) {
       return true;
     }
 
@@ -366,64 +699,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     );
   }
 
-  bool _passesFilters(CombinedListing listing) {
-    // Search filter
-    if (_searchQuery.isNotEmpty &&
-        !listing.title.toLowerCase().contains(_searchQuery) &&
-        !(listing.description?.toLowerCase().contains(_searchQuery) ?? false)) {
-      return false;
-    }
-
-    // Category filter
-    if (_selectedCategory != 'All') {
-      List<String>? listingCategories;
-
-      if (listing.originalData is ItemListing) {
-        listingCategories = (listing.originalData as ItemListing).category;
-      } else if (listing.originalData is BusinessListing) {
-        listingCategories =
-            (listing.originalData as BusinessListing).businessCategory;
-      } else if (listing.originalData is EventListing) {
-        listingCategories =
-            (listing.originalData as EventListing).eventCategory;
-      }
-
-      if (listingCategories == null ||
-          !listingCategories.any(
-            (cat) => cat.toLowerCase() == _selectedCategory.toLowerCase(),
-          )) {
-        return false;
-      }
-    }
-
-    // Location filter
-    if (_selectedLocation != 'All' && _userLocation != null) {
-      double? lat, lon;
-
-      if (listing.originalData is ItemListing) {
-        lat = (listing.originalData as ItemListing).latitude;
-        lon = (listing.originalData as ItemListing).longitude;
-      } else if (listing.originalData is BusinessListing) {
-        lat = (listing.originalData as BusinessListing).latitude;
-        lon = (listing.originalData as BusinessListing).longitude;
-      } else if (listing.originalData is EventListing) {
-        lat = (listing.originalData as EventListing).latitude;
-        lon = (listing.originalData as EventListing).longitude;
-      }
-
-      if (!_isWithinSelectedRadius(lat, lon)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  Widget _buildListingItem(CombinedListing listing) {
-    if (!_passesFilters(listing)) {
-      return SizedBox.shrink();
-    }
-
+  Widget _buildListingItem(Listing listing) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
@@ -438,16 +714,12 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                 Row(
                   children: [
                     Text(
-                      listing.paymentStatus == 'pending'
-                          ? 'payment pending'
-                          : listing.status,
+                      listing.status == 'publish' ? 'Published' : 'Draft',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color:
-                            listing.paymentStatus == 'pending'
-                                ? Colors.black
-                                : listing.status == 'Published'
+                            listing.status == 'publish'
                                 ? Color(0xFFF2B342)
                                 : Color(0xFF8E8E93),
                       ),
@@ -456,11 +728,11 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _getTypeColor(listing.type),
+                        color: _getTypeColor(listing.listingType),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        listing.type.toUpperCase(),
+                        listing.listingType.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -479,9 +751,9 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (listing.price != null)
+                if (listing.priceAsDouble != null)
                   Text(
-                    '£${listing.price!.toStringAsFixed(2)}',
+                    '\$${listing.priceAsDouble!.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 16,
                       color: Color(0xFFF2B342),
@@ -508,25 +780,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                         ],
                       ),
                       child: GestureDetector(
-                        onTap: () {
-                          if (listing.originalData is ItemListing) {
-                            Get.to(
-                              () => ListItemForm(),
-                              arguments: listing.originalData as ItemListing,
-                            );
-                          } else if (listing.originalData is BusinessListing) {
-                            Get.to(
-                              () => ListBusinessForm(),
-                              arguments:
-                                  listing.originalData as BusinessListing,
-                            );
-                          } else if (listing.originalData is EventListing) {
-                            Get.to(
-                              () => ListEventForm(),
-                              arguments: listing.originalData as EventListing,
-                            );
-                          }
-                        },
+                        onTap: () => _editListing(listing),
                         child: Text(
                           'Edit',
                           style: TextStyle(color: Colors.white, fontSize: 14),
@@ -558,41 +812,6 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
-
-                    if (listing.paymentStatus == 'pending')
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF2B342),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 6,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Get.to(
-                              () => SubscriptionManagementScreen(
-                                userId:
-                                    FirebaseAuth.instance.currentUser?.uid ??
-                                    '',
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Pay',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],
@@ -606,15 +825,15 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
               color: Colors.grey[300],
               borderRadius: BorderRadius.circular(8),
               image:
-                  listing.imageUrls.isNotEmpty
+                  listing.featuredImageUrl != null
                       ? DecorationImage(
-                        image: NetworkImage(listing.imageUrls.first),
+                        image: NetworkImage(listing.featuredImageUrl!),
                         fit: BoxFit.cover,
                       )
                       : null,
             ),
             child:
-                listing.imageUrls.isEmpty
+                listing.featuredImageUrl == null
                     ? Icon(Icons.image, color: Colors.grey[600])
                     : null,
           ),
@@ -623,46 +842,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     );
   }
 
-  Widget _buildFavoriteCard(FavoriteItem item) {
-    // Apply search filter
-    if (_searchQuery.isNotEmpty &&
-        !item.listingName.toLowerCase().contains(_searchQuery) &&
-        !(item.category?.any((c) => c.toLowerCase().contains(_searchQuery)) ??
-            false)) {
-      return SizedBox.shrink();
-    }
-
-    // Apply category filter
-    if (_selectedCategory != 'All' &&
-        item.category != null &&
-        !item.category!.any(
-          (c) => c.toLowerCase() == _selectedCategory.toLowerCase(),
-        )) {
-      return SizedBox.shrink();
-    }
-
-    // Apply price filter for items
-    if (_selectedPrice != 'All' &&
-        item.listingType == 'Item' &&
-        item.price != null) {
-      bool matchesPrice = false;
-      switch (_selectedPrice) {
-        case '\$0-\$50':
-          matchesPrice = item.price! <= 50;
-          break;
-        case '\$50-\$100':
-          matchesPrice = item.price! > 50 && item.price! <= 100;
-          break;
-        case '\$100-\$200':
-          matchesPrice = item.price! > 100 && item.price! <= 200;
-          break;
-        case '\$200+':
-          matchesPrice = item.price! > 200;
-          break;
-      }
-      if (!matchesPrice) return SizedBox.shrink();
-    }
-
+  Widget _buildFavoriteCard(UnifiedListing listing) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
@@ -677,9 +857,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
         ],
       ),
       child: InkWell(
-        onTap: () {
-          _navigateToDetailScreen(item);
-        },
+        onTap: () => _navigateToDetailScreen(listing),
         borderRadius: BorderRadius.circular(12.r),
         child: Padding(
           padding: EdgeInsets.all(12.w),
@@ -689,9 +867,9 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.r),
                 child:
-                    item.listingImage != null && item.listingImage!.isNotEmpty
+                    listing.featuredImageUrl != null
                         ? Image.network(
-                          item.listingImage!,
+                          listing.featuredImageUrl!,
                           width: 80.w,
                           height: 80.h,
                           fit: BoxFit.cover,
@@ -701,7 +879,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                               height: 80.h,
                               color: Colors.grey[200],
                               child: Icon(
-                                _getIconForListingType(item.listingType),
+                                _getIconForListingType(listing.listingType),
                                 color: Colors.grey[400],
                                 size: 32.w,
                               ),
@@ -716,14 +894,13 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(
-                            _getIconForListingType(item.listingType),
+                            _getIconForListingType(listing.listingType),
                             color: Colors.grey[400],
                             size: 32.w,
                           ),
                         ),
               ),
               SizedBox(width: 12.w),
-
               // Content
               Expanded(
                 child: Column(
@@ -736,11 +913,11 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                         vertical: 2.h,
                       ),
                       decoration: BoxDecoration(
-                        color: _getListingTypeColor(item.listingType),
+                        color: _getListingTypeColor(listing.listingType),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Text(
-                        item.listingType,
+                        listing.listingType,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10.sp,
@@ -749,10 +926,9 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                       ),
                     ),
                     SizedBox(height: 4.h),
-
                     // Name
                     Text(
-                      item.listingName,
+                      listing.title ?? 'Untitled',
                       style: TextStyle(
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w600,
@@ -762,32 +938,30 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
-
                     // Category
-                    if (item.category != null)
+                    if (listing.categories != null &&
+                        listing.categories!.isNotEmpty)
                       Text(
-                        (item.category ?? []).join(', '),
+                        listing.categories!.join(', '),
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: Colors.grey[600],
                         ),
                       ),
-
                     // Price for items
-                    if (item.listingType == 'Item' && item.price != null)
+                    if (listing.isItem && listing.priceAsDouble != null)
                       Text(
-                        '\$${item.price!.toStringAsFixed(2)}',
+                        '\$${listing.priceAsDouble!.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFF2B342),
                         ),
                       ),
-
                     // Added date
-                    if (item.addedAt != null)
+                    if (listing.createdAt != null)
                       Text(
-                        'Added ${_formatDate(item.addedAt!)}',
+                        'Added ${_formatDate(listing.createdAt!)}',
                         style: TextStyle(
                           fontSize: 10.sp,
                           color: Colors.grey[500],
@@ -796,11 +970,10 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                   ],
                 ),
               ),
-
               // Remove button
               IconButton(
-                onPressed: () => _removeFavorite(item),
-                icon: Icon(Icons.favorite, color: Colors.black, size: 24.w),
+                onPressed: () => _removeFavorite(listing),
+                icon: Icon(Icons.favorite, color: Colors.red, size: 24.w),
                 tooltip: 'Remove from favorites',
               ),
             ],
@@ -811,7 +984,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
   }
 
   Color _getTypeColor(String type) {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case 'item':
         return Colors.blue;
       case 'business':
@@ -825,11 +998,11 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
 
   Color _getListingTypeColor(String type) {
     switch (type) {
-      case 'Item':
+      case 'item':
         return Color(0xFFF2B342);
-      case 'Business':
+      case 'business':
         return Colors.blue;
-      case 'Event':
+      case 'event':
         return Color(0xFFF2B342);
       default:
         return Colors.grey;
@@ -838,11 +1011,11 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
 
   IconData _getIconForListingType(String type) {
     switch (type) {
-      case 'Item':
+      case 'item':
         return Icons.shopping_bag;
-      case 'Business':
+      case 'business':
         return Icons.business;
-      case 'Event':
+      case 'event':
         return Icons.event;
       default:
         return Icons.favorite;
@@ -864,17 +1037,17 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     }
   }
 
-  void _editListing(CombinedListing listing) {
-    print('Edit ${listing.type}: ${listing.title}');
-    // TODO: Implement navigation to edit screens
+  void _editListing(Listing listing) {
+    print('Edit ${listing.listingType}: ${listing.title}');
+    // TODO: Implement navigation to edit screens based on listing type
   }
 
-  void _deleteListing(CombinedListing listing) {
+  void _deleteListing(Listing listing) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Delete ${listing.type}'),
+          title: Text('Delete ${listing.listingType}'),
           content: Text('Are you sure you want to delete "${listing.title}"?'),
           actions: [
             TextButton(
@@ -894,44 +1067,66 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     );
   }
 
-  Future<void> _performDelete(CombinedListing listing) async {
+  Future<void> _performDelete(Listing listing) async {
     try {
-      switch (listing.type) {
-        case 'item':
-          await _firebaseServices.deleteItem(listing.id);
-          break;
-        case 'business':
-          await _firebaseServices.deleteBusiness(listing.id);
-          break;
-        case 'event':
-          await _firebaseServices.deleteEvent(listing.id);
-          break;
-      }
+      // TODO: Implement delete API calls based on your API
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${listing.type} deleted successfully'),
+          content: Text('${listing.listingType} deleted successfully'),
           backgroundColor: Color(0xFFF2B342),
         ),
       );
+
+      // Refresh the data
+      _loadUserListings();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to delete ${listing.type}: $e'),
+          content: Text('Failed to delete ${listing.listingType}: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  Future<void> _removeFavorite(FavoriteItem item) async {
-    final success = await _favoritesService.removeFromFavorites(item.listingId);
-    if (success) {
+  Future<void> _removeFavorite(UnifiedListing listing) async {
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        // Remove from local list
+        currentUser.favouriteListings?.remove(listing.id);
+        ApiUserModel currentUserupdated = currentUser.removeFromFavourites(
+          listing.id ?? 0,
+        );
+
+        Get.find<AuthService>().updateUserProfileDetails(
+          updateData: {
+            "meta": {
+              "atbdp_favourites": currentUserupdated.favouriteListingIds,
+            },
+          },
+        );
+
+        Get.snackbar(
+          'Removed',
+          '${listing.title} removed from favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+
+        // Refresh user info and favorites
+        await _refreshUserInfo();
+        _loadFavoriteListings();
+      }
+    } catch (e) {
       Get.snackbar(
-        'Removed',
-        '${item.listingName} removed from favorites',
-   snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
+        'Error',
+        'Failed to remove from favorites',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -960,127 +1155,80 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
     );
 
     if (confirmed == true) {
-      final success = await _favoritesService.clearAllFavorites();
-      if (success) {
+      try {
+        final currentUser = _authService.currentUser;
+        if (currentUser != null) {
+          currentUser.favouriteListings?.clear();
+          // TODO: Update user favorites in your backend/API
+          // await _authService.updateUserFavorites([]);
+
+          Get.snackbar(
+            'Cleared',
+            'All favorites have been removed',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Color(0xFFF2B342),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
+          );
+
+          // Refresh user info and favorites
+          await _refreshUserInfo();
+          _loadFavoriteListings();
+        }
+      } catch (e) {
         Get.snackbar(
-          'Cleared',
-          'All favorites have been removed',
-   snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Color(0xFFF2B342),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
+          'Error',
+          'Failed to clear favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
         );
       }
     }
   }
 
-  void _navigateToDetailScreen(FavoriteItem item) async {
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (context) => Dialog(
-            child: Container(
-              padding: EdgeInsets.all(20),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 20),
-                  Text('Loading...'),
-                ],
-              ),
-            ),
-          ),
-    );
-
+  void _navigateToDetailScreen(dynamic listing) async {
     try {
-      dynamic product;
+      // TODO: Navigate to detail screen based on listing type
+      // You'll need to implement this based on your existing detail screens
+
       Widget? page;
+      String listingType;
+      String title;
 
-      switch (item.listingType) {
-        case 'Item':
-          print('Navigate to Item detail: ${item.listingId}');
-          // Fetch from firestore
-          DocumentSnapshot doc =
-              await FirebaseFirestore.instance
-                  .collection('items')
-                  .doc(item.listingId)
-                  .get();
+      // Handle both Listing and UnifiedListing types
+      if (listing is Listing) {
+        listingType = listing.listingType;
+        title = listing.title;
 
-          if (doc.exists) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            data['id'] = doc.id;
-            product = ItemListing.fromFirestore(data, doc.id);
-          }
-          break;
+        if (listing.isItem) {
+          // page = ItemProductDetailScreen(product: listing);
+        } else if (listing.isBusiness) {
+          // page = BusinessDetailScreen(business: listing);
+        } else if (listing.isEvent) {
+          // page = EventDetailScreen(event: listing);
+        }
+      } else if (listing is UnifiedListing) {
+        listingType = listing.listingType;
+        title = listing.title ?? 'Untitled';
 
-        case 'Business':
-          print('Navigate to Business detail: ${item.listingId}');
-          // Fetch from firestore
-          DocumentSnapshot doc =
-              await FirebaseFirestore.instance
-                  .collection('businesses')
-                  .doc(item.listingId)
-                  .get();
-
-          if (doc.exists) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            data['id'] = doc.id;
-            product = BusinessListing.fromFirestore(data, doc.id);
-          }
-          break;
-
-        case 'Event':
-          print('Navigate to Event detail: ${item.listingId}');
-          // Fetch from firestore
-          DocumentSnapshot doc =
-              await FirebaseFirestore.instance
-                  .collection('events')
-                  .doc(item.listingId)
-                  .get();
-
-          if (doc.exists) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            data['id'] = doc.id;
-            product = EventListing.fromFirestore(data, doc.id);
-          }
-          break;
+        if (listing.isItem) {
+          // page = ItemProductDetailScreen(product: listing);
+        } else if (listing.isBusiness) {
+          // page = BusinessDetailScreen(business: listing);
+        } else if (listing.isEvent) {
+          // page = EventDetailScreen(event: listing);
+        }
       }
 
-      // Hide loading dialog
-      Navigator.pop(context);
-
-      // Navigate based on product type
-      if (product != null) {
-        if (product is ItemListing) {
-          page = ItemProductDetailScreen(product: product);
-        } else if (product is BusinessListing) {
-          page = BusinessDetailScreen(business: product);
-        } else if (product is EventListing) {
-          page = EventDetailScreen(event: product);
-        }
-
-        if (page != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => page!),
-          );
-        }
-      } else {
-        // Show error if product not found
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Item not found')));
+      if (page != null) {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => page!));
       }
     } catch (e) {
-      // Hide loading dialog on error
-      Navigator.pop(context);
-      print('Error: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error loading item')));
+      ).showSnackBar(SnackBar(content: Text('Error loading item details')));
     }
   }
 
@@ -1128,247 +1276,63 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
   }
 
   Widget _buildMyListingsTab() {
-    return StreamBuilder<List<ItemListing>>(
-      stream: _itemsStream,
-      builder: (context, itemSnapshot) {
-        return StreamBuilder<List<BusinessListing>>(
-          stream: _businessesStream,
-          builder: (context, businessSnapshot) {
-            return StreamBuilder<List<EventListing>>(
-              stream: _eventsStream,
-              builder: (context, eventSnapshot) {
-                if (itemSnapshot.connectionState == ConnectionState.waiting ||
-                    businessSnapshot.connectionState ==
-                        ConnectionState.waiting ||
-                    eventSnapshot.connectionState == ConnectionState.waiting) {
-                  return _buildShimmerLoading();
-                }
+    if (_isLoadingUserListings) {
+      return _buildShimmerLoading();
+    }
 
-                if (itemSnapshot.hasError ||
-                    businessSnapshot.hasError ||
-                    eventSnapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        SizedBox(height: 16),
-                        Text(
-                          'Error loading listings',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Please try again later',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+    if (_filteredUserListings.isEmpty) {
+      return _buildEmptyState(
+        _searchQuery.isNotEmpty ||
+                _selectedCategory != 'All' ||
+                _selectedLocation != 'All'
+            ? 'No results found'
+            : 'No listings found',
+      );
+    }
 
-                final List<CombinedListing> allListings = [];
-
-                if (itemSnapshot.hasData) {
-                  allListings.addAll(
-                    itemSnapshot.data!.map(
-                      (item) => CombinedListing.fromItem(item),
-                    ),
-                  );
-                }
-
-                if (businessSnapshot.hasData) {
-                  allListings.addAll(
-                    businessSnapshot.data!.map(
-                      (business) => CombinedListing.fromBusiness(business),
-                    ),
-                  );
-                }
-
-                if (eventSnapshot.hasData) {
-                  allListings.addAll(
-                    eventSnapshot.data!.map(
-                      (event) => CombinedListing.fromEvent(event),
-                    ),
-                  );
-                }
-
-                allListings.sort((a, b) {
-                  if (a.createdAt == null && b.createdAt == null) return 0;
-                  if (a.createdAt == null) return 1;
-                  if (b.createdAt == null) return -1;
-                  return b.createdAt!.compareTo(a.createdAt!);
-                });
-
-                // Apply filters efficiently
-                final filteredListings =
-                    allListings.where(_passesFilters).toList();
-
-                if (filteredListings.isEmpty) {
-                  return _buildEmptyState(
-                    _searchQuery.isNotEmpty ||
-                            _selectedCategory != 'All' ||
-                            _selectedLocation != 'All'
-                        ? 'No results found'
-                        : 'No listings found',
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {
-                      _initializeStreams();
-                    });
-                  },
-                  child: ListView.builder(
-                    itemCount: filteredListings.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () {
-                          Widget page;
-                          if (filteredListings[index].type == 'item') {
-                            page = ItemProductDetailScreen(
-                              product:
-                                  filteredListings[index].originalData
-                                      as ItemListing,
-                            );
-                          } else if (filteredListings[index].type ==
-                              'business') {
-                            page = BusinessDetailScreen(
-                              business:
-                                  filteredListings[index].originalData
-                                      as BusinessListing,
-                            );
-                          } else {
-                            page = EventDetailScreen(
-                              event:
-                                  filteredListings[index].originalData
-                                      as EventListing,
-                            );
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => page),
-                          );
-                        },
-                        child: _buildListingItem(filteredListings[index]),
-                      );
-                    },
-                  ),
-                );
-              },
-            );
-          },
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadUserListings();
       },
+      child: ListView.builder(
+        itemCount: _filteredUserListings.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => _navigateToDetailScreen(_filteredUserListings[index]),
+            child: _buildListingItem(_filteredUserListings[index]),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildFavoritesTab() {
-    return StreamBuilder<List<FavoriteItem>>(
-      stream: _favoritesService.getUserFavorites(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildShimmerLoading();
-        }
+    if (_isLoadingFavorites) {
+      return _buildShimmerLoading();
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red),
-                SizedBox(height: 16),
-                Text(
-                  'Error loading favorites',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Please try again later',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
-        }
+    if (_filteredFavoriteListings.isEmpty) {
+      String message =
+          _searchQuery.isNotEmpty ||
+                  _selectedCategory != 'All' ||
+                  _selectedPrice != 'All'
+              ? 'No favorites found matching filters'
+              : 'No favorites yet';
+      return _buildEmptyState(message);
+    }
 
-        final favorites = snapshot.data ?? [];
-        final filteredFavorites =
-            favorites.where((item) {
-              // Apply search filter
-              if (_searchQuery.isNotEmpty &&
-                  !item.listingName.toLowerCase().contains(_searchQuery) &&
-                  !(item.category?.any(
-                        (c) => c.toLowerCase().contains(_searchQuery),
-                      ) ??
-                      false)) {
-                return false;
-              }
-
-              // Apply category filter
-              if (_selectedCategory != 'All' &&
-                  item.category != null &&
-                  !item.category!.any(
-                    (c) => c.toLowerCase() == _selectedCategory.toLowerCase(),
-                  )) {
-                return false;
-              }
-
-              // Apply price filter for items
-              if (_selectedPrice != 'All' &&
-                  item.listingType == 'Item' &&
-                  item.price != null) {
-                bool matchesPrice = false;
-                switch (_selectedPrice) {
-                  case '\$0-\$50':
-                    matchesPrice = item.price! <= 50;
-                    break;
-                  case '\$50-\$100':
-                    matchesPrice = item.price! > 50 && item.price! <= 100;
-                    break;
-                  case '\$100-\$200':
-                    matchesPrice = item.price! > 100 && item.price! <= 200;
-                    break;
-                  case '\$200+':
-                    matchesPrice = item.price! > 200;
-                    break;
-                }
-                if (!matchesPrice) return false;
-              }
-
-              return true;
-            }).toList();
-
-        if (filteredFavorites.isEmpty) {
-          String message =
-              _searchQuery.isNotEmpty ||
-                      _selectedCategory != 'All' ||
-                      _selectedPrice != 'All'
-                  ? 'No favorites found matching filters'
-                  : 'No favorites yet';
-          return _buildEmptyState(message);
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: filteredFavorites.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {},
-                child: _buildFavoriteCard(filteredFavorites[index]),
-              );
-            },
-          ),
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _refreshUserInfo();
+        await _loadFavoriteListings();
       },
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: _filteredFavoriteListings.length,
+        itemBuilder: (context, index) {
+          return _buildFavoriteCard(_filteredFavoriteListings[index]);
+        },
+      ),
     );
   }
 
@@ -1470,6 +1434,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
+                    SizedBox(width: 24),
                     _buildFilterPopupMenu(
                       currentValue: _selectedCategory,
                       options: [
@@ -1497,6 +1462,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                       onSelected: (value) {
                         setState(() {
                           _selectedCategory = value;
+                          _applyFilters();
                         });
                       },
                       title: 'Category',
@@ -1514,6 +1480,7 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                       onSelected: (value) {
                         setState(() {
                           _selectedLocation = value;
+                          _applyFilters();
                         });
                       },
                       title: 'Location',
@@ -1531,10 +1498,12 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
                       onSelected: (value) {
                         setState(() {
                           _selectedPrice = value;
+                          _applyFilters();
                         });
                       },
                       title: 'Price',
                     ),
+                    SizedBox(width: 24),
                   ],
                 ),
               ),
@@ -1549,77 +1518,6 @@ class _ListingFavoritesScreenState extends State<ListingFavoritesScreen>
           ],
         ),
       ),
-    );
-  }
-}
-
-class CombinedListing {
-  final String id;
-  final String title;
-  final String? description;
-  final double? price;
-  final String status;
-  final List<String> imageUrls;
-  final String type; // 'item', 'business', 'event'
-  final dynamic originalData;
-  final DateTime? createdAt;
-  final String? paymentStatus;
-
-  CombinedListing({
-    required this.id,
-    required this.title,
-    this.description,
-    this.price,
-    required this.status,
-    required this.imageUrls,
-    required this.type,
-    required this.originalData,
-    this.paymentStatus,
-    this.createdAt,
-  });
-
-  static CombinedListing fromItem(ItemListing item) {
-    return CombinedListing(
-      id: item.id ?? '',
-      title: item.itemName ?? 'Untitled Item',
-      description: item.description,
-      price: item.price?.toDouble(),
-      status: item.isActive == true ? 'Published' : 'Draft',
-      imageUrls: item.photoUrls ?? [],
-      type: 'item',
-      originalData: item,
-      paymentStatus: item.paymentStatus,
-      createdAt: item.createdAt,
-    );
-  }
-
-  static CombinedListing fromBusiness(BusinessListing business) {
-    return CombinedListing(
-      id: business.id ?? '',
-      title: business.businessName ?? 'Untitled Business',
-      description: business.description,
-      price: null,
-      status: business.isActive == true ? 'Published' : 'Draft',
-      imageUrls: business.photoUrls ?? [],
-      type: 'business',
-      paymentStatus: 'pending',
-      originalData: business,
-      createdAt: business.createdAt,
-    );
-  }
-
-  static CombinedListing fromEvent(EventListing event) {
-    return CombinedListing(
-      id: event.id ?? '',
-      title: event.eventName ?? 'Untitled Event',
-      description: event.description,
-      price: 0,
-      status: event.isActive == true ? 'Published' : 'Draft',
-      imageUrls: event.photoUrls ?? [],
-      type: 'event',
-      originalData: event,
-      paymentStatus: 'pending',
-      createdAt: event.createdAt,
     );
   }
 }

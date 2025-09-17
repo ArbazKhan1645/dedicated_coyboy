@@ -1,10 +1,13 @@
 // Updated list_item_form.dart
+import 'dart:convert';
+
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
 import 'package:dedicated_cowboy/views/map/map_select.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:dedicated_cowboy/widgets/textfield_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:dedicated_cowboy/consts/appthemes.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -139,13 +142,61 @@ class ListItemForm extends StatelessWidget {
               ),
 
               const SizedBox(height: 24),
-              CustomMultiSelectField(
-                title: 'Select Category',
-                hint: 'Category',
-                items: controller.categories,
-                selectedItems: controller.selectedCategories,
-                onSelectionChanged: (selected) {
-                  controller.selectCategory(selected);
+              FutureBuilder<List<Category>>(
+                future: CategoryService.fetchCategories(parentIds: [284, 290]),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: const Center(child: LinearProgressIndicator()),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.red.withOpacity(0.1),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Error loading categories',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: const Center(
+                        child: Text('No categories available'),
+                      ),
+                    );
+                  }
+
+                  return CustomMultiSelectField(
+                    title: 'Select Category',
+                    hint: 'Category',
+                    categories: snapshot.data!,
+                    selectedCategories: controller.selectedCategories,
+                    onSelectionChanged: (selected) {
+                      controller.selectCategory(selected);
+                    },
+                  );
                 },
               ),
 
@@ -1091,17 +1142,52 @@ class ListItemForm extends StatelessWidget {
   }
 }
 
+// Category Model
+class Category {
+  final int id;
+  final String name;
+  final int parent;
+
+  Category({required this.id, required this.name, required this.parent});
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      parent: json['parent'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name, 'parent': parent};
+  }
+
+  @override
+  String toString() {
+    return 'Category{id: $id, name: $name, parent: $parent}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Category && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+// Updated CustomMultiSelectField to work with Category objects
 class CustomMultiSelectField extends StatefulWidget {
-  final List<String> items;
-  final List<String> selectedItems;
-  final Function(List<String>) onSelectionChanged;
+  final List<Category> categories;
+  final List<Category> selectedCategories;
+  final Function(List<Category>) onSelectionChanged;
   final String title;
   final String hint;
 
   const CustomMultiSelectField({
     Key? key,
-    required this.items,
-    required this.selectedItems,
+    required this.categories,
+    required this.selectedCategories,
     required this.onSelectionChanged,
     this.title = "Business Category",
     this.hint = "Select categories",
@@ -1113,30 +1199,38 @@ class CustomMultiSelectField extends StatefulWidget {
 
 class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
   bool _isExpanded = false;
-  List<String> _selectedItems = [];
+  List<Category> _selectedCategories = [];
 
   @override
   void initState() {
     super.initState();
-    _selectedItems = List.from(widget.selectedItems);
+    _selectedCategories = List.from(widget.selectedCategories);
   }
 
-  void _toggleSelection(String item) {
+  @override
+  void didUpdateWidget(CustomMultiSelectField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedCategories != oldWidget.selectedCategories) {
+      _selectedCategories = List.from(widget.selectedCategories);
+    }
+  }
+
+  void _toggleSelection(Category category) {
     setState(() {
-      if (_selectedItems.contains(item)) {
-        _selectedItems.remove(item);
+      if (_selectedCategories.contains(category)) {
+        _selectedCategories.remove(category);
       } else {
-        _selectedItems.add(item);
+        _selectedCategories.add(category);
       }
     });
-    widget.onSelectionChanged(_selectedItems);
+    widget.onSelectionChanged(_selectedCategories);
   }
 
-  void _removeItem(String item) {
+  void _removeCategory(Category category) {
     setState(() {
-      _selectedItems.remove(item);
+      _selectedCategories.remove(category);
     });
-    widget.onSelectionChanged(_selectedItems);
+    widget.onSelectionChanged(_selectedCategories);
   }
 
   @override
@@ -1148,7 +1242,10 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
         RichText(
           text: TextSpan(
             text: widget.title,
-            style: Appthemes.textSmall.copyWith(fontFamily: 'popins-bold', color: Color(0xFF424242)),
+            style: Appthemes.textSmall.copyWith(
+              fontFamily: 'popins-bold',
+              color: Color(0xFF424242),
+            ),
             children: [
               TextSpan(
                 text: ' *',
@@ -1168,8 +1265,8 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
           ),
           child: Column(
             children: [
-              // Selected items chips section
-              if (_selectedItems.isNotEmpty)
+              // Selected categories chips section
+              if (_selectedCategories.isNotEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -1177,7 +1274,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                     spacing: 8,
                     runSpacing: 8,
                     children:
-                        _selectedItems.map((item) {
+                        _selectedCategories.map((category) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -1191,7 +1288,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  item,
+                                  category.name,
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,
@@ -1199,7 +1296,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                                 ),
                                 const SizedBox(width: 4),
                                 GestureDetector(
-                                  onTap: () => _removeItem(item),
+                                  onTap: () => _removeCategory(category),
                                   child: Container(
                                     padding: const EdgeInsets.all(2),
                                     decoration: const BoxDecoration(
@@ -1232,7 +1329,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     border:
-                        _selectedItems.isNotEmpty
+                        _selectedCategories.isNotEmpty
                             ? Border(
                               top: BorderSide(color: const Color(0xFFE0E0E0)),
                             )
@@ -1242,7 +1339,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _selectedItems.isEmpty
+                        _selectedCategories.isEmpty
                             ? widget.hint
                             : "Select more categories",
                         style: Appthemes.textMedium.copyWith(
@@ -1271,14 +1368,17 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                   ),
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: widget.items.length,
+                    itemCount: widget.categories.length,
                     itemBuilder: (context, index) {
-                      final item = widget.items[index];
-                      final isSelected = _selectedItems.contains(item);
+                      final category = widget.categories[index];
+                      final isSelected = _selectedCategories.contains(category);
 
                       return ListTile(
                         dense: true,
-                        title: Text(item, style: const TextStyle(fontSize: 14)),
+                        title: Text(
+                          category.name,
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         trailing:
                             isSelected
                                 ? const Icon(
@@ -1287,7 +1387,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
                                   size: 20,
                                 )
                                 : null,
-                        onTap: () => _toggleSelection(item),
+                        onTap: () => _toggleSelection(category),
                         tileColor:
                             isSelected
                                 ? Colors.blue.withOpacity(0.1)
@@ -1302,4 +1402,37 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
       ],
     );
   }
+}
+
+class CategoryService {
+  static const String baseUrl =
+      'https://dedicatedcowboy.com/wp-json/wp/v2/at_biz_dir-category?per_page=100';
+
+  static Future<List<Category>> fetchCategories({List<int>? parentIds}) async {
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = json.decode(response.body);
+        List<Category> allCategories = parseCategoriesFromJson(jsonData);
+
+        // If parentIds are provided, filter by those parent IDs
+        if (parentIds != null && parentIds.isNotEmpty) {
+          return allCategories
+              .where((category) => parentIds.contains(category.parent))
+              .toList();
+        }
+
+        return allCategories;
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching categories: $e');
+    }
+  }
+}
+
+List<Category> parseCategoriesFromJson(List<dynamic> jsonList) {
+  return jsonList.map((json) => Category.fromJson(json)).toList();
 }

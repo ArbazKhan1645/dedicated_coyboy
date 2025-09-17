@@ -609,7 +609,7 @@ class ListingEventPreviewScreen extends StatelessWidget {
                         Icon(Icons.event, color: appColors.pYellow, size: 14),
                         const SizedBox(width: 4),
                         Text(
-                          category,
+                          category.name,
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w500,

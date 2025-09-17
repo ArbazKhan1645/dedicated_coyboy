@@ -1,13 +1,19 @@
 // add_listing_controller.dart
 
+import 'dart:math';
+
 import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
+import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/listings_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/list_item_form.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/listing_item_preview_screen.dart';
 import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:dedicated_cowboy/views/my_listings/my_listings.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -96,7 +102,7 @@ class ListItemController extends GetxController {
       venmoAccountController.text = existingItem!.venmoAccount ?? '';
 
       // Set selected values
-      selectedCategories.value = List<String>.from(
+      selectedCategories.value = List<Category>.from(
         existingItem!.category ?? [],
       );
       selectedCondition.value = existingItem!.condition ?? '';
@@ -183,7 +189,7 @@ class ListItemController extends GetxController {
 
   // Observable variables
   // Reactive list of strings
-  final RxList<String> selectedCategories = <String>[].obs;
+  final RxList<Category> selectedCategories = <Category>[].obs;
   final RxString selectedSubcategory = RxString('');
   final RxString selectedCondition = RxString('');
   final RxString selectedContactMethod = RxString('');
@@ -204,7 +210,7 @@ class ListItemController extends GetxController {
   final ImagePicker _picker = ImagePicker();
 
   // Static data lists
-  List<String> categories = [];
+  List<Category> categories = [];
 
   final List<String> subcategories = [];
   final List<String> conditions = ['New', 'Used', 'Vintage'];
@@ -217,14 +223,14 @@ class ListItemController extends GetxController {
   ];
 
   fetchCategories() {
-    var list1 = categoriesStatic['Home & Ranch Decor'] as List<String>;
-    var list2 = categoriesStatic['Tack & Live Stock'] as List<String>;
-    var list3 = categoriesStatic['Western Style'] as List<String>;
-    categories = [...list1, ...list2, ...list3];
+    // var list1 = categoriesStatic['Home & Ranch Decor'] as List<String>;
+    // var list2 = categoriesStatic['Tack & Live Stock'] as List<String>;
+    // var list3 = categoriesStatic['Western Style'] as List<String>;
+    // categories = [...list1, ...list2, ...list3];
   }
 
   // Getters for better access
-  List<String>? get categoryValue =>
+  List<Category>? get categoryValue =>
       selectedCategories.isEmpty ? null : selectedCategories;
   String? get subcategoryValue =>
       selectedSubcategory.value.isEmpty ? null : selectedSubcategory.value;
@@ -332,7 +338,7 @@ class ListItemController extends GetxController {
   }
 
   // Selection methods with error handling
-  void selectCategory(List<String>? category) {
+  void selectCategory(List<Category>? category) {
     try {
       if (category == null) return;
 
@@ -1020,24 +1026,31 @@ class ListItemController extends GetxController {
   // API Upload Media function
   Future<String> uploadMedia(
     List<File> files, {
-    String? directory,
+    String? directory, // not used in WP but kept for compatibility
     int? width,
     int? height,
   }) async {
     try {
+      // 🔹 Check Internet
       if (!await _hasInternetConnection()) {
         throw Exception('No internet connection available');
       }
 
-      var uri = Uri.parse('https://api.tjara.com/api/media/insert');
+      var uri = Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/media');
       var request = http.MultipartRequest('POST', uri);
 
+      // 🔹 Add WordPress Auth (username + app password)
+      const username = "18XLegend";
+      const appPassword = "O9px KmDk isTg PgaW wysH FqL6";
+      final basicAuth =
+          'Basic ${base64Encode(utf8.encode('$username:$appPassword'))}';
+
       request.headers.addAll({
-        'X-Request-From': 'Application',
+        'Authorization': basicAuth,
         'Accept': 'application/json',
       });
 
-      // Add media files with validation
+      // 🔹 Add media files with validation
       for (var file in files) {
         if (!await file.exists()) {
           throw Exception('File does not exist: ${file.path}');
@@ -1048,7 +1061,6 @@ class ListItemController extends GetxController {
           throw Exception('File is empty: ${file.path}');
         }
 
-        // Check file size (max 10MB)
         if (fileSize > 10 * 1024 * 1024) {
           throw Exception(
             'File too large (max 10MB): ${path.basename(file.path)}',
@@ -1057,7 +1069,7 @@ class ListItemController extends GetxController {
 
         var stream = http.ByteStream(file.openRead());
         var multipartFile = http.MultipartFile(
-          'media[]',
+          'file', // WP expects "file" (not media[])
           stream,
           fileSize,
           filename: path.basename(file.path),
@@ -1066,38 +1078,23 @@ class ListItemController extends GetxController {
         request.files.add(multipartFile);
       }
 
-      // Add optional parameters
+      // 🔹 WP doesn’t use directory/width/height fields directly,
+      // but you can still send meta (custom handling/plugins may use them)
       if (directory != null) request.fields['directory'] = directory;
       if (width != null) request.fields['width'] = width.toString();
       if (height != null) request.fields['height'] = height.toString();
 
-      // Send request
+      // 🔹 Send request
       var response = await request.send();
-
-      // Handle redirects
-      if (response.statusCode == 302 || response.statusCode == 301) {
-        var redirectUrl = response.headers['location'];
-        if (redirectUrl != null) {
-          return await uploadMedia(
-            files,
-            directory: directory,
-            width: width,
-            height: height,
-          );
-        }
-      }
-
       var responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         var jsonData = jsonDecode(responseBody);
 
-        if (jsonData['media'] != null &&
-            jsonData['media'].isNotEmpty &&
-            jsonData['media'][0]['url'] != null) {
-          return jsonData['media'][0]['url'];
+        if (jsonData['id'] != null) {
+          return jsonData['id'].toString(); // ✅ WordPress gives full URL
         } else {
-          throw Exception('Invalid response format: Missing media URL');
+          throw Exception('Invalid response: Missing source_url');
         }
       } else {
         throw Exception(
@@ -1140,13 +1137,15 @@ class ListItemController extends GetxController {
       }
 
       // Simulate AI processing with timeout
-      await Future.delayed(const Duration(seconds: 2)).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('AI rewrite timeout'),
-      );
+      // await Future.delayed(const Duration(seconds: 2)).timeout(
+      //   const Duration(seconds: 10),
+      //   onTimeout: () => throw TimeoutException('AI rewrite timeout'),
+      // );
 
       String originalDescription = descriptionController.text;
-      String enhancedDescription = _enhanceDescription(originalDescription);
+      String enhancedDescription = await _enhanceDescription(
+        originalDescription,
+      );
 
       descriptionController.text = enhancedDescription;
 
@@ -1164,10 +1163,15 @@ class ListItemController extends GetxController {
   }
 
   // Enhanced description with better formatting
-  String _enhanceDescription(String original) {
+  Future<String> _enhanceDescription(String original) async {
     try {
-      return "Enhanced: $original - High-quality item with excellent features, perfect condition, and great value for money.";
+      String newval = await Get.find<AIChatService>().sendMessage(
+        message: original,
+      );
+
+      return newval;
     } catch (e) {
+      print(e);
       return original; // Fallback to original if enhancement fails
     }
   }
@@ -1262,21 +1266,11 @@ class ListItemController extends GetxController {
     }
   }
 
-  final SubscriptionService _subscriptionService = SubscriptionService();
-
-  Future<bool> checkListingPermission(String userId) async {
-    return await _subscriptionService.canUserList(userId);
-  }
-
   // Publish listing with comprehensive error handling
   Future<void> publishListing() async {
     try {
       bool pendingPayment = false;
-      var checksub = await checkListingPermission(
-        FirebaseAuth.instance.currentUser!.uid,
-      );
 
-      pendingPayment = checksub;
       isPublishing.value = true;
       isLoading.value = true;
 
@@ -1323,117 +1317,183 @@ class ListItemController extends GetxController {
       }
 
       // Create/update item listing
-      final itemData = ItemListing(
-        id:
-            isEditMode.value
-                ? existingItemId.value
-                : null, // Keep existing ID for updates
-        latitude: latitude,
-        longitude: longitude,
-        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        itemName: itemNameController.text.trim(),
-        description: descriptionController.text.trim(),
-        category: selectedCategories,
-        price: double.tryParse(priceController.text.trim()) ?? 0.0,
-        photoUrls: imageUrls,
-        condition: selectedCondition.value,
-        sizeDimensions: sizeController.text.trim(),
-        isActive:
-            isEditMode.value
-                ? existingItem!.isActive
-                : false, // Keep existing status
-        createdAt: isEditMode.value ? existingItem!.createdAt : DateTime.now(),
-        updatedAt: DateTime.now(),
-        linkWebsite: linkWebsiteController.text.trim(),
-        brand: brandController.text.trim(),
-        shippingInfo: shippingController.text.trim(),
-        email: emailController.text.trim(),
-        preferredContactMethod: selectedContactMethod.value,
-        paymentMethod: selectedPaymentMethod,
-        otherPaymentOptions: otherPaymentController.text.trim(),
-        cityState: cityState,
-        venmoAccount: venmoAccountController.text.trim(),
-        cashappAccount: cashappAccountController.text.trim(),
-        paypalAccount: paypalController.text.trim(),
-        paymentStatus:
-            isEditMode.value
-                ? existingItem!.paymentStatus
-                : (pendingPayment ? 'paid' : 'pending'),
-        videoUrls:
-            videoUploadStatuses
-                .where(
-                  (status) => status.isUploaded && status.uploadedUrl != null,
-                )
-                .map((status) => status.uploadedUrl!)
-                .toList(),
-        attachmentUrls:
-            attachmentUploadStatuses
-                .where(
-                  (status) => status.isUploaded && status.uploadedUrl != null,
-                )
-                .map((status) => status.uploadedUrl!)
-                .toList(),
-      );
+      // final itemData = ItemListing(
+      //   id:
+      //       isEditMode.value
+      //           ? existingItemId.value
+      //           : null, // Keep existing ID for updates
+      //   latitude: latitude,
+      //   longitude: longitude,
+      //   userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+      //   itemName: itemNameController.text.trim(),
+      //   description: descriptionController.text.trim(),
+      //   // category: selectedCategories,
+      //   price: double.tryParse(priceController.text.trim()) ?? 0.0,
+      //   photoUrls: imageUrls,
+      //   condition: selectedCondition.value,
+      //   sizeDimensions: sizeController.text.trim(),
+      //   isActive:
+      //       isEditMode.value
+      //           ? existingItem!.isActive
+      //           : false, // Keep existing status
+      //   createdAt: isEditMode.value ? existingItem!.createdAt : DateTime.now(),
+      //   updatedAt: DateTime.now(),
+      //   linkWebsite: linkWebsiteController.text.trim(),
+      //   brand: brandController.text.trim(),
+      //   shippingInfo: shippingController.text.trim(),
+      //   email: emailController.text.trim(),
+      //   preferredContactMethod: selectedContactMethod.value,
+      //   paymentMethod: selectedPaymentMethod,
+      //   otherPaymentOptions: otherPaymentController.text.trim(),
+      //   cityState: cityState,
+      //   venmoAccount: venmoAccountController.text.trim(),
+      //   cashappAccount: cashappAccountController.text.trim(),
+      //   paypalAccount: paypalController.text.trim(),
+      //   paymentStatus:
+      //       isEditMode.value
+      //           ? existingItem!.paymentStatus
+      //           : (pendingPayment ? 'paid' : 'pending'),
+      //   videoUrls:
+      //       videoUploadStatuses
+      //           .where(
+      //             (status) => status.isUploaded && status.uploadedUrl != null,
+      //           )
+      //           .map((status) => status.uploadedUrl!)
+      //           .toList(),
+      //   attachmentUrls:
+      //       attachmentUploadStatuses
+      //           .where(
+      //             (status) => status.isUploaded && status.uploadedUrl != null,
+      //           )
+      //           .map((status) => status.uploadedUrl!)
+      //           .toList(),
+      // );
+      final listingImg = {
+        for (int i = 0; i < imageUrls.length; i++) "${i + 1}": imageUrls[i],
+      };
+      final body = {
+        "slug": itemNameController.text.trim().replaceAll(' ', '-'),
+        "status": "Draft",
+        "type": "at_biz_dir",
+        "title": {"rendered": "Statement piece dresser"},
+        "content": {
+          "rendered": "<p>${descriptionController.text.trim()}</p>\n",
+          "protected": false,
+        },
+        "author": Get.find<AuthService>().currentUser!.id,
+        "comment_status": "open",
+        "ping_status": "closed",
+        "template": "",
+        "atbdp_listing_types": [131],
+        "at_biz_dir-category": selectedCategories.map((e) => e.id).toList(),
+        "at_biz_dir-location": [],
+        "at_biz_dir-tags": [],
+        "acf": {"payment_options": null},
+        "_address": cityState,
+        "_manual_lat": latitude,
+        "_manual_lng": longitude,
+        "_atbd_listing_pricing":
+            double.tryParse(priceController.text.trim()) ?? 0.0,
+        "_price": double.tryParse(priceController.text.trim()) ?? 0.0,
+        "_email": emailController.text.trim(),
+        "_phone": phoneController.text.trim(),
+        "_expiry_date": "2025-12-12 15:25:40",
+        "_featured": "0",
+        "_listing_status": "post_status",
+        "_listing_prv_img": imageUrls.last,
+        "_thumbnail_id": imageUrls[0],
+        "_fm_plans": "14753",
+        "_listing_order_id": "17542",
+        "_listing_img": listingImg,
+        "_atbdp_post_views_count": "0",
+        "_lat": latitude,
+        "_lng": longitude,
+      };
 
-      String itemId;
+      if (Get.find<AuthService>().currentUser?.isActiveSubscription == true) {
+        final response = await http.post(
+          Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/at_biz_dir'),
+          headers: {
+            "Authorization": "Bearer ${Get.find<AuthService>().currentToken}",
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: jsonEncode(body),
+        );
 
-      if (isEditMode.value) {
-        // Update existing item
-        await _firebaseServices
-            .updateItem(existingItemId.value, itemData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Update timeout'),
-            );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          _clearForm();
+          Get.until((route) => route.isFirst);
 
-        _showSuccessSnackbar('Success!', 'Listing updated successfully!');
-      } else {
-        // Create new item
-        itemId = await _firebaseServices
-            .createItem(itemData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Publishing timeout'),
-            );
-
-        _showSuccessSnackbar('Success!', 'Listing published successfully!');
-      }
-
-      // Clear form and navigate
-      _clearForm();
-      Get.until((route) => route.isFirst);
-
-      if (isEditMode.value || pendingPayment) {
-        Get.to(() => ListingFavoritesScreen());
-      } else {
-        try {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null && user.email != null && user.displayName != null) {
-            await EmailTemplates.sendListingUnderReviewEmail(
-              recipientEmail: user.email!,
-              recipientName: user.displayName ?? 'Dear Customer',
-              listingTitle: itemNameController.text.trim(),
-              listingUrl:
-                  'https://dedicatedcowboy.com/listing/${itemNameController.text}',
-            );
+          if (isEditMode.value || pendingPayment) {
+            Get.to(() => ListingFavoritesScreen());
           } else {
-            debugPrint(
-              "Skipped sending subscription welcome email: user/email/displayName is null",
-            );
-          }
-        } catch (e, s) {
-          debugPrint("Error sending subscription welcome email: $e");
-          debugPrintStack(stackTrace: s);
-        }
+            try {
+              final user = Get.find<AuthService>().currentUser;
+              if (user != null) {
+                await EmailTemplates.sendListingUnderReviewEmail(
+                  recipientEmail: user.email,
+                  recipientName: user.displayName ?? 'Dear Customer',
+                  listingTitle: itemNameController.text.trim(),
+                  listingUrl:
+                      'https://dedicatedcowboy.com/listing/${itemNameController.text}',
+                );
+              } else {
+                debugPrint(
+                  "Skipped sending subscription welcome email: user/email/displayName is null",
+                );
+              }
+            } catch (e, s) {
+              debugPrint("Error sending subscription welcome email: $e");
+              debugPrintStack(stackTrace: s);
+            }
 
+            Get.to(
+              () => FinalSubscriptionManagementScreen(
+                userId: Get.find<AuthService>().currentUser?.id ?? '',
+              ),
+            )?.then((c) {
+              Get.to(() => ListingFavoritesScreen());
+            });
+          }
+        } else {
+          _showErrorSnackbar(
+            'Error',
+            'Something went wrong. Please try again.',
+          );
+        }
+      } else {
         Get.to(
-          () => SubscriptionManagementScreen(
-            userId: FirebaseAuth.instance.currentUser!.uid,
+          () => FinalSubscriptionManagementScreen(
+            userId: Get.find<AuthService>().currentUser?.id ?? '',
           ),
         )?.then((c) {
           Get.to(() => ListingFavoritesScreen());
         });
       }
+
+      // if (isEditMode.value) {
+      //   // Update existing item
+      //   await _firebaseServices
+      //       .updateItem(existingItemId.value, itemData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Update timeout'),
+      //       );
+
+      //   _showSuccessSnackbar('Success!', 'Listing updated successfully!');
+      // } else {
+      //   // Create new item
+      //   itemId = await _firebaseServices
+      //       .createItem(itemData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Publishing timeout'),
+      //       );
+
+      //   _showSuccessSnackbar('Success!', 'Listing published successfully!');
+      // }
+
+      // Clear form and navigate
     } on TimeoutException {
       _showErrorSnackbar('Timeout', 'Operation timed out. Please try again.');
     } on FirebaseException catch (e) {
@@ -1758,8 +1818,10 @@ final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
     "name": "Business & Services",
     "children": [
       {"name": "Business & Services", "id": 310, "parent": 0},
-      {"name": "Boutiques", "id": 350, "parent": 310},
       {"name": "All Other", "id": 352, "parent": 310},
+      {"name": "Boutiques", "id": 350, "parent": 310},
+      {"name": "Ranch Services", "id": 351, "parent": 310},
+      {"name": "Western Retail Shops", "id": 349, "parent": 310},
     ],
   },
   "Home & Ranch Decor": {
@@ -1768,9 +1830,21 @@ final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
     "name": "Home & Ranch Decor",
     "children": [
       {"name": "Home & Ranch Decor", "id": 290, "parent": 0},
-      {"name": "Furniture", "id": 338, "parent": 290},
       {"name": "Art", "id": 339, "parent": 290},
       {"name": "Decor", "id": 340, "parent": 290},
+      {"name": "Furniture", "id": 338, "parent": 290},
+    ],
+  },
+  "Tack & Livestock": {
+    "id": 296,
+    "parent": 0,
+    "name": "Tack & Livestock",
+    "children": [
+      {"name": "Tack & Livestock", "id": 296, "parent": 0},
+      {"name": "Horses", "id": 342, "parent": 296},
+      {"name": "Livestock", "id": 343, "parent": 296},
+      {"name": "Miscellaneous", "id": 344, "parent": 296},
+      {"name": "Tack", "id": 341, "parent": 296},
     ],
   },
   "Western Life & Events": {
@@ -1779,8 +1853,10 @@ final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
     "name": "Western Life & Events",
     "children": [
       {"name": "Western Life & Events", "id": 303, "parent": 0},
-      {"name": "Barrel Races", "id": 346, "parent": 303},
       {"name": "All Other Events", "id": 348, "parent": 303},
+      {"name": "Barrel Races", "id": 346, "parent": 303},
+      {"name": "Rodeos", "id": 345, "parent": 303},
+      {"name": "Team Roping", "id": 347, "parent": 303},
     ],
   },
   "Western Style": {
@@ -1789,10 +1865,10 @@ final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
     "name": "Western Style",
     "children": [
       {"name": "Western Style", "id": 284, "parent": 0},
-      {"name": "Women", "id": 401, "parent": 284},
-      {"name": "Men", "id": 402, "parent": 284},
-      {"name": "Kids", "id": 403, "parent": 284},
       {"name": "Accessories", "id": 337, "parent": 284},
+      {"name": "Kids", "id": 336, "parent": 284},
+      {"name": "Mens", "id": 286, "parent": 284},
+      {"name": "Womens", "id": 285, "parent": 284},
     ],
   },
 };

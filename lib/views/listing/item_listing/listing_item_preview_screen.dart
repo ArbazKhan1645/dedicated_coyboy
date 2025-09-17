@@ -639,7 +639,7 @@ class ListingItemPreviewScreen extends StatelessWidget {
                       border: Border.all(color: appColors.pYellow, width: 1),
                     ),
                     child: Text(
-                      category,
+                      category.name,
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w500,

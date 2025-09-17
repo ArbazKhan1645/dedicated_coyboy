@@ -41,9 +41,20 @@ class ApiClient {
     required String password,
   }) async {
     try {
+      final value = email.trim();
+
+      // Email regex
+      final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+      // Check type
+      final isEmail = emailRegex.hasMatch(value);
       final uri = Uri.parse('$baseUrl/?rest_route=/simple-jwt-login/v1/auth');
 
-      final body = jsonEncode({'email': email.trim(), 'password': password});
+      final body = jsonEncode({
+        if (!isEmail) 'username': email.trim(),
+        if (isEmail) 'email': email.trim(),
+        'password': password,
+      });
 
       final response = await http.post(uri, body: body).timeout(requestTimeout);
 
@@ -228,6 +239,7 @@ class ApiClient {
     required Map<String, dynamic> updateData,
   }) async {
     try {
+      print(updateData);
       final uri = Uri.parse('$baseUrl/wp-json/wp/v2/users/me');
 
       final response = await http
@@ -267,36 +279,57 @@ class ApiClient {
 
       switch (response.statusCode) {
         case 200:
-          if (data['success'] == true) {
-            final responseData = data.containsKey('data') ? data['data'] : data;
+          if (data.containsKey('success')) {
+            if (data['success'] == true) {
+              final responseData =
+                  data.containsKey('data') ? data['data'] : data;
+              return ApiResponse<T>(
+                success: true,
+                data: fromJson(responseData),
+                statusCode: response.statusCode,
+                message: data['message'],
+              );
+            } else {
+              throw AuthException(
+                message: data['message'] ?? 'Request failed',
+                code: 'api-error',
+              );
+            }
+          } else {
+            // No "success" field, just parse directly
             return ApiResponse<T>(
               success: true,
-              data: fromJson(responseData),
+              data: fromJson(data),
               statusCode: response.statusCode,
-              message: data['message'],
-            );
-          } else {
-            throw AuthException(
-              message: data['message'] ?? 'Request failed',
-              code: 'api-error',
+              message: null,
             );
           }
         case 201:
-          if (data['success'] == true) {
-            final responseData = data.containsKey('data') ? data['data'] : data;
+          if (data.containsKey('success')) {
+            if (data['success'] == true) {
+              final responseData =
+                  data.containsKey('data') ? data['data'] : data;
+              return ApiResponse<T>(
+                success: true,
+                data: fromJson(responseData),
+                statusCode: response.statusCode,
+                message: data['message'],
+              );
+            } else {
+              throw AuthException(
+                message: data['message'] ?? 'Request failed',
+                code: 'api-error',
+              );
+            }
+          } else {
+            // No "success" field, just parse directly
             return ApiResponse<T>(
               success: true,
-              data: fromJson(responseData),
+              data: fromJson(data),
               statusCode: response.statusCode,
-              message: data['message'],
-            );
-          } else {
-            throw AuthException(
-              message: data['message'] ?? 'Request failed',
-              code: 'api-error',
+              message: null,
             );
           }
-
         case 400:
           throw AuthException(
             message: data['message'] ?? 'Bad request. Please check your input.',

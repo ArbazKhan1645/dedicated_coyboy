@@ -142,15 +142,64 @@ class ListBusinessForm extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Business Category Dropdown
-              CustomMultiSelectField(
-                title: 'Business Category',
-                hint: 'Category',
-                items: controller.businessCategories,
-                selectedItems: controller.selectedCategories,
-                onSelectionChanged: (selected) {
-                  controller.selectCategory(selected);
+              FutureBuilder<List<Category>>(
+                future: CategoryService.fetchCategories(parentIds: [310]),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.red.withOpacity(0.1),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Error loading categories',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: const Center(
+                        child: Text('No categories available'),
+                      ),
+                    );
+                  }
+
+                  return CustomMultiSelectField(
+                    title: 'Business Category',
+                    hint: 'Category',
+                    categories: snapshot.data!,
+                    selectedCategories: controller.selectedCategories,
+                    onSelectionChanged: (selected) {
+                      controller.selectCategory(selected);
+                    },
+                  );
                 },
               ),
+
               const SizedBox(height: 20),
 
               // // Select Subcategory Dropdown

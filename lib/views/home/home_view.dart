@@ -1,5 +1,4 @@
-import 'package:dedicated_cowboy/app/models/modules_models/business_model.dart';
-import 'package:dedicated_cowboy/app/models/modules_models/item_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/consts/appColors.dart';
 import 'package:dedicated_cowboy/consts/appthemes.dart';
@@ -8,8 +7,7 @@ import 'package:dedicated_cowboy/views/home/controller/home_controller.dart';
 import 'package:dedicated_cowboy/views/home/widgets/banner_widget.dart';
 import 'package:dedicated_cowboy/views/home/widgets/feature_widget.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
-import 'package:dedicated_cowboy/views/products_listings/products_listings.dart';
-import 'package:dedicated_cowboy/views/subscriptions.dart';
+
 import 'package:dedicated_cowboy/views/word_listings/listings.dart';
 import 'package:dedicated_cowboy/views/word_listings/widgets.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
@@ -198,8 +196,8 @@ class HomeView extends StatelessWidget {
                     isLoading: false,
                     onTap: () {
                       Get.to(
-                        () => SubscriptionManagementScreen(
-                          userId: FirebaseAuth.instance.currentUser!.uid,
+                        () => FinalSubscriptionManagementScreen(
+                          userId: Get.find<AuthService>().currentUser?.id ?? '',
                         ),
                       );
                     },

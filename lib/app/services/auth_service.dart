@@ -53,7 +53,7 @@ class AuthService extends GetxService {
     required String email,
     required String password,
   }) async {
-    _validateEmail(email);
+    // _validateEmail(email);
     _validatePassword(password);
 
     try {
@@ -62,8 +62,6 @@ class AuthService extends GetxService {
         email: email,
         password: password,
       );
-
-      print(signInResponse.data);
 
       if (!signInResponse.success || signInResponse.data == null) {
         throw const AuthException(
@@ -224,10 +222,10 @@ class AuthService extends GetxService {
       if (name != null) updateData['name'] = name.trim();
       if (firstName != null) updateData['first_name'] = firstName.trim();
       if (lastName != null) updateData['last_name'] = lastName.trim();
-      if (email != null) {
-        _validateEmail(email);
-        updateData['email'] = email.trim();
-      }
+      // if (email != null) {
+      //   _validateEmail(email);
+      //   updateData['email'] = email.trim();
+      // }
       if (description != null) updateData['description'] = description.trim();
       if (url != null) updateData['url'] = url.trim();
 
@@ -260,6 +258,47 @@ class AuthService extends GetxService {
 
       return _currentUser!;
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future updateUserProfileDetails({
+    final Map<String, dynamic>? updateData,
+  }) async {
+    if (_currentToken == null) {
+      throw const AuthException(message: 'No user signed in.', code: 'no-user');
+    }
+
+    try {
+      if (updateData == null) {
+        throw const AuthException(
+          message: 'No data provided for update.',
+          code: 'no-update-data',
+        );
+      }
+
+      final response = await ApiClient.updateUserProfile(
+        token: _currentToken!,
+        updateData: updateData,
+      );
+      if (!response.success || response.data == null) {
+        throw AuthException(
+          message: response.message ?? 'Failed to update profile.',
+          code: 'profile-update-failed',
+        );
+      }
+
+      _currentUser = response.data!;
+
+      // Update stored user data
+      await AuthStorage.updateUserData(_currentUser!);
+
+      // Notify listeners
+      _authStateController.add(_currentUser);
+
+      return _currentUser!;
+    } catch (e) {
+      print(e);
       rethrow;
     }
   }
@@ -385,14 +424,21 @@ class AuthService extends GetxService {
 
 // Enhanced AuthValidator for REST API
 class AuthValidator {
-  static String? validateEmail(String? email) {
-    if (email == null || email.isEmpty) {
-      return 'Email is required';
+  static String? validateUsernameOrEmail(String? val) {
+    if (val == null || val.trim().isEmpty) {
+      return 'Value is required';
     }
 
+    final value = val.trim();
+
+    // Email regex
     final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-    if (!emailRegex.hasMatch(email.trim())) {
-      return 'Please enter a valid email address';
+
+    // Username regex (letters, numbers, underscores, 3-20 chars for example)
+    final usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
+
+    if (!emailRegex.hasMatch(value) && !usernameRegex.hasMatch(value)) {
+      return 'Enter a valid email or username';
     }
 
     return null;

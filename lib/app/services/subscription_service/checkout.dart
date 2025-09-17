@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 // import 'models/subscription_model.dart';
 
 class CheckoutScreen extends StatefulWidget {
-  final SubscriptionPlan subscriptionPlan;
+  final PricingPlan subscriptionPlan;
   final VoidCallback onCheckout;
 
   const CheckoutScreen({
@@ -94,7 +94,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.subscriptionPlan.name,
+                              widget.subscriptionPlan.title.toString(),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -103,7 +103,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              widget.subscriptionPlan.description,
+                              widget.subscriptionPlan.fmDescription,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -112,47 +112,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                             const SizedBox(height: 12),
                             // Features
-                            if (widget
-                                .subscriptionPlan
-                                .features
-                                .isNotEmpty) ...[
-                              Text(
-                                'Includes:',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              ...widget.subscriptionPlan.features.map(
-                                (feature) => Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 16,
-                                        color:               appColors.darkBlue, // White dot in the center,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        feature,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                        
                           ],
                         ),
                       ),
                       Text(
-                        '\$${widget.subscriptionPlan.price.toStringAsFixed(0)}',
+                        '\$${widget.subscriptionPlan.fmPrice}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -175,7 +140,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         style: TextStyle(fontSize: 16, color: Colors.black87),
                       ),
                       Text(
-                        '\$${widget.subscriptionPlan.price.toStringAsFixed(0)}',
+                        '\$${widget.subscriptionPlan.fmPrice}',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black87,
@@ -199,7 +164,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                       ),
                       Text(
-                        widget.subscriptionPlan.price.toStringAsFixed(0),
+                        widget.subscriptionPlan.fmPrice,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,

@@ -1,9 +1,8 @@
 // Chat Message Screen with enhanced features
 import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/views/chats/controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -62,10 +61,10 @@ class ChatMessageScreen extends StatelessWidget {
                                       backgroundColor: Colors.orange[100],
                                       child: Stack(
                                         children: [
-                                          if (user?.avatar != null)
+                                          if (user?.avatarUrls != null)
                                             ClipOval(
                                               child: CachedNetworkImage(
-                                                imageUrl: user!.avatar!,
+                                                imageUrl: user!.avatarUrls['24']?? '',
                                                 placeholder:
                                                     (context, url) =>
                                                         _buildInitialsAvatar(
@@ -84,23 +83,7 @@ class ChatMessageScreen extends StatelessWidget {
                                         ],
                                       ),
                                     ),
-                                    if (user?.isOnline == true)
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF4CAF50),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                   
                                   ],
                                 ),
                                 const SizedBox(width: 12),
@@ -446,7 +429,7 @@ class ChatMessageScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInitialsAvatar(UserModel? user) {
+  Widget _buildInitialsAvatar(ApiUserModel? user) {
     final displayName = user?.displayName ?? '?';
     final initials =
         displayName.isNotEmpty
@@ -540,10 +523,10 @@ class ChatMessageScreen extends StatelessWidget {
             backgroundColor: Colors.orange[100],
             child: Stack(
               children: [
-                if (controller.otherUser.value?.avatar != null)
+                if (controller.otherUser.value?.avatarUrls != null)
                   ClipOval(
                     child: CachedNetworkImage(
-                      imageUrl: controller.otherUser.value?.avatar ?? '',
+                      imageUrl: controller.otherUser.value?.avatarUrls['24'] ?? '',
                       placeholder:
                           (context, url) =>
                               _buildInitialsAvatar(controller.otherUser.value),

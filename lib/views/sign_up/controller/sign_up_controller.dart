@@ -76,7 +76,7 @@ class SignUpController extends GetxController {
 
     String? firstError;
 
-    final emailValidation = AuthValidator.validateEmail(
+    final emailValidation = AuthValidator.validateUsernameOrEmail(
       emailController.value.text,
     );
     if (emailValidation != null) {
@@ -124,10 +124,7 @@ class SignUpController extends GetxController {
       final password = passwordController.value.text;
 
       // Attempt to sign up
-      final user = await _authService.signUp(
-        email: email,
-        password: password,
-      );
+      final user = await _authService.signUp(email: email, password: password);
 
       // Set onboarding as seen
       final prefs = await SharedPreferences.getInstance();
@@ -189,9 +186,7 @@ class SignUpController extends GetxController {
         _showError('Too many attempts. Please try again later.');
         break;
       case 'server-error':
-        _showError(
-          'Server error. Please try again later.',
-        );
+        _showError('Server error. Please try again later.');
         break;
       case 'validation-error':
         _showError(e.message);
@@ -249,19 +244,21 @@ class SignUpController extends GetxController {
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           Obx(
             () => ElevatedButton(
-              onPressed: isResettingPassword.value
-                  ? null
-                  : () => _sendPasswordResetEmail(
+              onPressed:
+                  isResettingPassword.value
+                      ? null
+                      : () => _sendPasswordResetEmail(
                         forgotPasswordController.text,
                         isResettingPassword,
                       ),
-              child: isResettingPassword.value
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Send Reset Link'),
+              child:
+                  isResettingPassword.value
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Text('Send Reset Link'),
             ),
           ),
         ],
@@ -272,7 +269,7 @@ class SignUpController extends GetxController {
   Future<void> _sendPasswordResetEmail(String email, RxBool isLoading) async {
     try {
       // Validate email
-      final emailValidation = AuthValidator.validateEmail(email);
+      final emailValidation = AuthValidator.validateUsernameOrEmail(email);
       if (emailValidation != null) {
         Get.snackbar(
           'Error',

@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +14,7 @@ class ChatController extends GetxController {
   // Observable variables
   final RxList<Message> messages = <Message>[].obs;
   final RxList<Message> optimisticMessages = <Message>[].obs;
-  final Rx<UserModel?> otherUser = Rx<UserModel?>(null);
+  final Rx<ApiUserModel?> otherUser = Rx<ApiUserModel?>(null);
   final RxBool isLoading = false.obs;
   final RxBool isTyping = false.obs;
   final RxBool showEmojiPicker = false.obs;

@@ -1,4 +1,5 @@
 // Unified Detail Screen that handles all listing types
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
@@ -523,7 +524,7 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
         throw Exception('User not authenticated');
       }
 
-      final currentUser = await chatService.getUserProfile(currentUserId);
+      final currentUser = Get.find<AuthService>().currentUser;
       if (currentUser == null) {
         throw Exception('Please Sign in again');
       }
@@ -620,12 +621,101 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
   late final String _imageUrl;
   late final Widget _cachedImage;
 
+  Future<void> _removeFavorite(UnifiedListing listing) async {
+    try {
+      final currentUser = Get.find<AuthService>().currentUser;
+      if (currentUser != null) {
+        currentUser.favouriteListings?.remove(listing.id);
+        ApiUserModel currentUserupdated = currentUser.removeFromFavourites(
+          listing.id ?? 0,
+        );
+        Get.find<AuthService>().updateUserProfileDetails(
+          updateData: {
+            "meta": {
+              "atbdp_favourites": currentUserupdated.favouriteListingIds,
+            },
+          },
+        );
+
+        Get.snackbar(
+          'Removed',
+          '${listing.title} removed from favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+
+        setState(() {});
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to remove from favorites',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> _addListing(UnifiedListing listing) async {
+    print('object');
+    try {
+      final currentUser = Get.find<AuthService>().currentUser;
+      if (currentUser != null) {
+        currentUser.favouriteListings?.add(listing.id ?? -1);
+        ApiUserModel currentUserupdated = currentUser.addToFavourites(
+          listing.id ?? 0,
+        );
+        Get.find<AuthService>().updateUserProfileDetails(
+          updateData: {
+            "meta": {
+              "atbdp_favourites": currentUserupdated.favouriteListingIds,
+            },
+          },
+        );
+
+        Get.snackbar(
+          'Added',
+          '${listing.title} Added to favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+
+        setState(() {});
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to Add to favorites',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<bool> _checkFavoriteStatus(UnifiedListing listing) async {
+    var isFav = Get.find<AuthService>().currentUser?.isListingFavourite(
+      listing.id ?? -1,
+    );
+
+    if (isFav != null) {
+      return isFav;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
     _imageUrl = _getListingImageUrl(widget.listing) ?? '';
     _cachedImage = _buildCachedImage(); // Build image once and cache it
-    _checkFavoriteStatus();
   }
 
   // Cache the image widget to prevent rebuilding
@@ -673,46 +763,11 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
     );
   }
 
-  Future<void> _checkFavoriteStatus() async {
-    if (widget.listing.id != null) {
-      // Uncomment when service is ready
-      // final isFav = await _favoritesService.isFavorite(
-      //   widget.listing.id!.toString(),
-      // );
-      if (mounted) {
-        setState(() {
-          _isFavorite = true;
-        });
-      }
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    if (_isLoading) return;
-
-    final listing = widget.listing;
-    if (listing.id == null || listing.author == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Your favorite toggle logic here...
-      // Commented out service calls
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating favorites: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  Future<void> _toggleFavorite(bool val) async {
+    if (val == false) {
+      _addListing(widget.listing);
+    } else {
+      _removeFavorite(widget.listing);
     }
   }
 
@@ -750,48 +805,60 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
                 ),
 
                 // Favorite button
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: _toggleFavorite,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child:
-                          _isLoading
-                              ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.grey[600]!,
-                                  ),
-                                ),
-                              )
-                              : Icon(
-                                _isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                size: 16,
-                                color:
-                                    _isFavorite
-                                        ? Colors.black
-                                        : Colors.grey[600],
+                FutureBuilder(
+                  future: _checkFavoriteStatus(listing),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container();
+                    }
+                    if (snapshot.hasError) {
+                      return Container();
+                    }
+                    bool isfav = snapshot.data ?? false;
+                    return Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          _toggleFavorite(isfav);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                    ),
-                  ),
+                            ],
+                          ),
+                          child:
+                              _isLoading
+                                  ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.grey[600]!,
+                                      ),
+                                    ),
+                                  )
+                                  : Icon(
+                                    isfav
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    size: 16,
+                                    color:
+                                        isfav ? Colors.black : Colors.grey[600],
+                                  ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 // Listing type badge

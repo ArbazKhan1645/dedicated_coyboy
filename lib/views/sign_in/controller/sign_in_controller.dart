@@ -99,7 +99,7 @@ class SignInController extends GetxController {
 
   // Validate form inputs
   String? validateEmail(String? email) {
-    return AuthValidator.validateEmail(email);
+    return AuthValidator.validateUsernameOrEmail(email);
   }
 
   String? validatePassword(String? password) {
@@ -337,9 +337,10 @@ class SignInController extends GetxController {
                               text: 'Send',
                               backgroundColor: appColors.pYellow,
                               isLoading: isForgotPasswordLoading.value,
-                              onTap: isForgotPasswordLoading.value
-                                  ? null
-                                  : sendPasswordResetEmail,
+                              onTap:
+                                  isForgotPasswordLoading.value
+                                      ? null
+                                      : sendPasswordResetEmail,
                             ),
                           ),
                         ),

@@ -1,13 +1,18 @@
+import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/models/chat/chat_room-model.dart';
-import 'package:dedicated_cowboy/app/models/user_model.dart';
+
 import 'package:dedicated_cowboy/main.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
+// Get user profile
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'dart:io';
 import 'dart:async';
 
@@ -26,7 +31,7 @@ class ChatService extends GetxService {
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+
   final ImagePicker _imagePicker = ImagePicker();
   final Uuid _uuid = const Uuid();
 
@@ -36,8 +41,8 @@ class ChatService extends GetxService {
   Future<String> createOrGetChatRoom({
     required String currentUserId,
     required String otherUserId,
-    required UserModel currentUser,
-    required UserModel otherUser,
+    required ApiUserModel currentUser,
+    required ApiUserModel otherUser,
     String? productId,
     String? productTitle,
     String? productImage,
@@ -66,14 +71,14 @@ class ChatService extends GetxService {
           currentUserId: ChatParticipant(
             userId: currentUserId,
             displayName: currentUser.displayName.toString(),
-            avatar: currentUser.avatar,
-            isOnline: currentUser.isOnline ?? false,
+            avatar: currentUser.avatarUrls['24'] ?? '',
+            isOnline: false,
           ),
           otherUserId: ChatParticipant(
             userId: otherUserId,
             displayName: otherUser.displayName.toString(),
-            avatar: otherUser.avatar,
-            isOnline: otherUser.isOnline ?? false,
+            avatar: currentUser.avatarUrls['24'] ?? '',
+            isOnline: false,
           ),
         },
         unreadCount: {currentUserId: 0, otherUserId: 0},
@@ -109,14 +114,12 @@ class ChatService extends GetxService {
   Future<void> updateParticipantData(
     String roomId,
     String userId,
-    UserModel user,
+    ApiUserModel user,
   ) async {
     await _firestore.collection('chatRooms').doc(roomId).update({
       'participantData.$userId': {
         'userId': userId,
         'displayName': user.displayName,
-        'avatar': user.avatar,
-        'isOnline': user.isOnline,
       },
     });
   }
@@ -366,17 +369,31 @@ class ChatService extends GetxService {
     }
   }
 
-  // Get user profile
-  Future<UserModel?> getUserProfile(String userId) async {
+  Future<ApiUserModel?> getUserProfile(String userId) async {
     try {
-      print(userId);
-      final doc = await _firestore.collection('users').doc(userId).get();
-      if (doc.exists) {
-        return UserModel.fromJson(doc.data()!..['id'] = doc.id);
+      final username = '18XLegend';
+      final appPassword = 'O9px KmDk isTg PgaW wysH FqL6';
+      final basicAuth =
+          'Basic ${base64Encode(utf8.encode('$username:$appPassword'))}';
+      final url = Uri.parse(
+        "https://dedicatedcowboy.com/wp-json/wp/v2/users/$userId",
+      );
+      final response = await http.get(
+        url,
+        headers: {'Authorization': basicAuth, 'Accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        // Add `id` manually like you did in Firestore
+
+        return ApiUserModel.fromJson(data);
+      } else {
+        print("Failed to load profile: ${response.statusCode}");
+        return null;
       }
-      return null;
     } catch (e) {
-      print(e);
+      print("Error fetching profile: $e");
       return null;
     }
   }

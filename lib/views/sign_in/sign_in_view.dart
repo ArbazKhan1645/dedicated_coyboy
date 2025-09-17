@@ -182,8 +182,8 @@ class _SignInViewState extends State<SignInView>
           // Email Field
           Obx(
             () => CustomTextField(
-              labelText: 'Email Address',
-              hintText: 'Enter your email address',
+              labelText: 'Username or Email Address',
+              hintText: 'Enter your Username or Email Address',
               controller: controller.emailController.value,
               keyboardType: TextInputType.emailAddress,
               // textInputAction: TextInputAction.next,
@@ -290,13 +290,12 @@ class _SignInViewState extends State<SignInView>
           const SizedBox(height: 30),
 
           // Divider with Text
-          TextWithDividers(
-            text: 'or login with',
-            dividerColor: appColors.black.withOpacity(0.3),
-            dividerThickness: 1.0,
-            textStyle: Appthemes.textMedium.copyWith(color: Colors.grey[600]),
-          ),
-
+          // TextWithDividers(
+          //   text: 'or login with',
+          //   dividerColor: appColors.black.withOpacity(0.3),
+          //   dividerThickness: 1.0,
+          //   textStyle: Appthemes.textMedium.copyWith(color: Colors.grey[600]),
+          // ),
           const SizedBox(height: 25),
 
           // // Social Login Buttons
@@ -353,7 +352,6 @@ class _SignInViewState extends State<SignInView>
           //     ),
           //   ],
           // ),
-
           const SizedBox(height: 30),
 
           // Sign Up Link

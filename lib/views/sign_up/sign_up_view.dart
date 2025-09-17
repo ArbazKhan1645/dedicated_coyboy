@@ -283,7 +283,6 @@ class _SignUpViewState extends State<SignUpView> {
                         //     },
                         //   ),
                         // ),
-                        const SizedBox(height: 20),
 
                         // Create Password Field
                         Obx(

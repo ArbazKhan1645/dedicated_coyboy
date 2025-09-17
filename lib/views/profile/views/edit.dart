@@ -7,9 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
-// Import your ProfileController
-// import 'package:your_app/controllers/profile_controller.dart';
-
 class UserProfileEditScreen extends StatefulWidget {
   const UserProfileEditScreen({super.key});
 
@@ -23,9 +20,6 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
 
   // Get the ProfileController instance
   final ProfileController controller = Get.find<ProfileController>();
-
-  bool _obscureNewPassword = true;
-  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -161,11 +155,11 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: Color(0xFFF2B342),
+                        color: const Color(0xFFF2B342),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.camera_alt,
                         color: Colors.white,
                         size: 14,
@@ -179,7 +173,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
           const SizedBox(height: 16),
           Obx(
             () => Text(
-              controller.currentUser.value?.fullName ?? 'User Name',
+              controller.currentUser.value?.displayName ?? 'User Name',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -211,6 +205,31 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
               ),
             ),
           ),
+          // Add subscription badge if user has active subscription
+          Obx(() {
+            if (controller.isActiveSubscription.value) {
+              return Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2B342),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  controller.subscriptionPlan.value.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );
@@ -218,12 +237,12 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
 
   Widget _buildAvatarFallback() {
     return Container(
-      color: Color(0xFFF2B342).withOpacity(0.2),
+      color: const Color(0xFFF2B342).withOpacity(0.2),
       child: Center(
         child: Obx(
           () => Text(
-            controller.currentUser.value?.initials ?? 'U',
-            style: TextStyle(
+            _getInitials(controller.currentUser.value?.displayName ?? 'U'),
+            style: const TextStyle(
               color: Color(0xFFF2B342),
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -232,6 +251,13 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
         ),
       ),
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final words = name.trim().split(' ');
+    if (words.length == 1) return words[0][0].toUpperCase();
+    return '${words[0][0]}${words[1][0]}'.toUpperCase();
   }
 
   Widget _buildProfileForm() {
@@ -260,7 +286,7 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             hintText: 'Enter your display name',
           ),
           _buildFormField(
-            label: 'User Name',
+            label: 'Username',
             controller: controller.userNameController,
             hintText: 'Enter your username',
           ),
@@ -274,17 +300,11 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             controller: controller.lastNameController,
             hintText: 'Enter your last name',
           ),
-          // _buildFormField(
-          //   label: 'Email (Required)',
-          //   controller: controller.emailController,
-          //   hintText: 'user@example.com',
-          //   keyboardType: TextInputType.emailAddress,
-          // ),
           _buildFormField(
-            label: 'Phone',
-            controller: controller.phoneController,
-            hintText: 'Enter your phone number',
-            keyboardType: TextInputType.phone,
+            label: 'Email',
+            controller: controller.emailController,
+            hintText: 'user@example.com',
+            keyboardType: TextInputType.emailAddress,
           ),
           _buildFormField(
             label: 'Website',
@@ -293,84 +313,169 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             keyboardType: TextInputType.url,
           ),
           _buildFormField(
-            label: 'Address',
-            controller: controller.addressController,
-            hintText: 'Enter your address',
-            maxLines: 3,
-          ),
-
-          // Professional Information
-          const SizedBox(height: 16),
-          _buildSectionTitle('Professional Information'),
-          _buildDropdownField(
-            label: 'Professional Status',
-            value: controller.selectedProfessionalStatus.value,
-            items: controller.professionalStatuses,
-            onChanged:
-                (value) =>
-                    controller.selectedProfessionalStatus.value = value ?? '',
-          ),
-          _buildDropdownField(
-            label: 'Industry',
-            value: controller.selectedIndustry.value,
-            items: controller.industries,
-            onChanged:
-                (value) => controller.selectedIndustry.value = value ?? '',
-          ),
-
-          // Business Information
-          const SizedBox(height: 16),
-          _buildSectionTitle('Business Information'),
-          _buildFormField(
-            label: 'Business Name',
-            controller: controller.businessNameController,
-            hintText: 'Enter your business name',
-          ),
-          _buildFormField(
-            label: 'Business Website',
-            controller: controller.businessLinkController,
-            hintText: 'https://yourbusiness.com',
-            keyboardType: TextInputType.url,
-          ),
-          _buildFormField(
-            label: 'Business Address',
-            controller: controller.businessAddressController,
-            hintText: 'Enter your business address',
-            maxLines: 3,
-          ),
-
-          // Password Section
-          const SizedBox(height: 16),
-          _buildSectionTitle('Change Password (Optional)'),
-          _buildPasswordField(
-            label: 'New Password',
-            controller: controller.newPasswordController,
-            hintText: 'Enter new password',
-            obscureText: _obscureNewPassword,
-            onToggle:
-                () =>
-                    setState(() => _obscureNewPassword = !_obscureNewPassword),
-          ),
-          _buildPasswordField(
-            label: 'Confirm New Password',
-            controller: controller.confirmPasswordController,
-            hintText: 'Confirm new password',
-            obscureText: _obscureConfirmPassword,
-            onToggle:
-                () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                ),
-          ),
-
-          _buildFormField(
-            label: 'About',
-            controller: controller.aboutController,
+            label: 'Description',
+            controller: controller.descriptionController,
             hintText: 'Tell us about yourself',
             maxLines: 4,
           ),
 
-          const SizedBox(height: 32),
-          _buildSocialProfiles(),
+          // Social Media Section
+          const SizedBox(height: 16),
+          _buildSectionTitle('Social Profiles'),
+          _buildSocialField(
+            icon: Icons.facebook,
+            label: 'Facebook',
+            controller: controller.facebookController,
+            color: const Color(0xff1877F2),
+          ),
+          _buildSocialField(
+            icon: Icons.camera_alt, // Instagram icon
+            label: 'Instagram',
+            controller: controller.instagramController,
+            color: const Color(0xffE4405F),
+          ),
+          _buildSocialField(
+            icon: Icons.work,
+            label: 'LinkedIn',
+            controller: controller.linkedinController,
+            color: const Color(0xff0A66C2),
+          ),
+          _buildSocialField(
+            icon: Icons.video_library,
+            label: 'YouTube',
+            controller: controller.youtubeController,
+            color: const Color(0xffFF0000),
+          ),
+
+          // Billing Information Section (if user has subscription)
+          Obx(() {
+            if (controller.isActiveSubscription.value) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildSectionTitle('Billing Information'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'First Name',
+                          controller: controller.billingFirstNameController,
+                          hintText: 'Billing first name',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'Last Name',
+                          controller: controller.billingLastNameController,
+                          hintText: 'Billing last name',
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildFormField(
+                    label: 'Billing Email',
+                    controller: controller.billingEmailController,
+                    hintText: 'billing@example.com',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  _buildFormField(
+                    label: 'Phone',
+                    controller: controller.billingPhoneController,
+                    hintText: 'Enter billing phone number',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  _buildFormField(
+                    label: 'Address',
+                    controller: controller.billingAddressController,
+                    hintText: 'Enter billing address',
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'City',
+                          controller: controller.billingCityController,
+                          hintText: 'City',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'Postcode',
+                          controller: controller.billingPostcodeController,
+                          hintText: 'Postcode',
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'Country',
+                          controller: controller.billingCountryController,
+                          hintText: 'Country',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFormField(
+                          label: 'State',
+                          controller: controller.billingStateController,
+                          hintText: 'State',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+
+          // Account Information
+          const SizedBox(height: 16),
+          _buildSectionTitle('Account Information'),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Obx(
+                  () => _buildInfoRow(
+                    'Account Type:',
+                    controller.subscriptionPlan.value.toUpperCase(),
+                  ),
+                ),
+                Obx(
+                  () => _buildInfoRow(
+                    'User Roles:',
+                    controller.currentUser.value?.roles.join(', ') ?? 'N/A',
+                  ),
+                ),
+                Obx(
+                  () => _buildInfoRow(
+                    'Member Since:',
+                    _formatDate(controller.currentUser.value?.registeredDate),
+                  ),
+                ),
+                Obx(
+                  () => _buildInfoRow(
+                    'Favourites:',
+                    '${controller.favouriteListingIds.length} listings',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 40),
           _buildSaveButton(),
         ],
@@ -443,155 +548,6 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
     );
   }
 
-  Widget _buildDropdownField({
-    required String label,
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: value.isNotEmpty ? value : null,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFF2B342), width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-          ),
-          items:
-              items.map((String item) {
-                return DropdownMenuItem<String>(value: item, child: Text(item));
-              }).toList(),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField({
-    required String label,
-    required TextEditingController controller,
-    required String hintText,
-    required bool obscureText,
-    required VoidCallback onToggle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFF2B342), width: 2),
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility : Icons.visibility_off,
-                color: Colors.grey.shade600,
-              ),
-              onPressed: onToggle,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildSocialProfiles() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Social Profiles',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildSocialField(
-          icon: Icons.facebook,
-          label: 'Facebook',
-          controller: controller.facebookController,
-          color: const Color(0xff1877F2),
-        ),
-        _buildSocialField(
-          icon: Icons.alternate_email,
-          label: 'Twitter',
-          controller: controller.twitterController,
-          color: const Color(0xff1DA1F2),
-        ),
-        _buildSocialField(
-          icon: Icons.work,
-          label: 'LinkedIn',
-          controller: controller.linkedinController,
-          color: const Color(0xff0A66C2),
-        ),
-        _buildSocialField(
-          icon: Icons.video_library,
-          label: 'YouTube',
-          controller: controller.youtubeController,
-          color: const Color(0xffFF0000),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSocialField({
     required IconData icon,
     required String label,
@@ -644,11 +600,44 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
     );
   }
 
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'N/A';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
   Widget _buildSaveButton() {
     return Obx(
       () => CustomElevatedButton(
         text: 'Save Changes',
-        backgroundColor: Color(0xFFF2B342),
+        backgroundColor: const Color(0xFFF2B342),
         textColor: Colors.white,
         fontSize: 18.sp,
         fontWeight: FontWeight.w900,

@@ -38,7 +38,7 @@ Future createPaymentIntent({
     body: body,
   );
 
-  print(body);
+
 
   if (response.statusCode == 200) {
     var json = jsonDecode(response.body);

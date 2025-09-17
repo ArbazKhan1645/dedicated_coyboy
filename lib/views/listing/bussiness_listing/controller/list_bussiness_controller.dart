@@ -1,7 +1,9 @@
 // list_business_controller.dart
+import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/list_item_form.dart';
 import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -53,7 +55,7 @@ class ListBusinessController extends GetxController {
           existingBusiness!.facebookInstagramLink ?? '';
 
       // Populate categories
-      selectedCategories.value = List<String>.from(
+      selectedCategories.value = List<Category>.from(
         existingBusiness!.businessCategory ?? [],
       );
 
@@ -123,7 +125,7 @@ class ListBusinessController extends GetxController {
   final TextEditingController websiteController = TextEditingController();
   final TextEditingController businessNameController = TextEditingController();
   // Getters for better access
-  List<String>? get businessCategoryValue =>
+  List<Category>? get businessCategoryValue =>
       selectedCategories.isEmpty ? null : selectedCategories;
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
@@ -144,7 +146,7 @@ class ListBusinessController extends GetxController {
       TextEditingController();
 
   // Observable variables
-  final RxList<String> selectedCategories = <String>[].obs;
+  final RxList<Category> selectedCategories = <Category>[].obs;
   final RxString selectedSubcategory = RxString('');
   final RxString selectedCondition = RxString('');
   final RxString selectedContactMethod = RxString('');
@@ -169,7 +171,7 @@ class ListBusinessController extends GetxController {
   final List<String> subcategories = [];
 
   // Getters for better access
-  List<String>? get categoryValue =>
+  List<Category>? get categoryValue =>
       selectedCategories.isEmpty ? null : selectedCategories;
   String? get subcategoryValue =>
       selectedSubcategory.value.isEmpty ? null : selectedSubcategory.value;
@@ -283,7 +285,7 @@ class ListBusinessController extends GetxController {
   }
 
   // Selection methods with error handling
-  void selectCategory(List<String>? category) {
+  void selectCategory(List<Category>? category) {
     try {
       if (category == null) return;
 
@@ -957,24 +959,31 @@ class ListBusinessController extends GetxController {
   // API Upload Media function
   Future<String> uploadMedia(
     List<File> files, {
-    String? directory,
+    String? directory, // not used in WP but kept for compatibility
     int? width,
     int? height,
   }) async {
     try {
+      // 🔹 Check Internet
       if (!await _hasInternetConnection()) {
         throw Exception('No internet connection available');
       }
 
-      var uri = Uri.parse('https://api.tjara.com/api/media/insert');
+      var uri = Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/media');
       var request = http.MultipartRequest('POST', uri);
 
+      // 🔹 Add WordPress Auth (username + app password)
+      const username = "18XLegend";
+      const appPassword = "O9px KmDk isTg PgaW wysH FqL6";
+      final basicAuth =
+          'Basic ${base64Encode(utf8.encode('$username:$appPassword'))}';
+
       request.headers.addAll({
-        'X-Request-From': 'Application',
+        'Authorization': basicAuth,
         'Accept': 'application/json',
       });
 
-      // Add media files with validation
+      // 🔹 Add media files with validation
       for (var file in files) {
         if (!await file.exists()) {
           throw Exception('File does not exist: ${file.path}');
@@ -985,7 +994,6 @@ class ListBusinessController extends GetxController {
           throw Exception('File is empty: ${file.path}');
         }
 
-        // Check file size (max 10MB)
         if (fileSize > 10 * 1024 * 1024) {
           throw Exception(
             'File too large (max 10MB): ${path.basename(file.path)}',
@@ -994,7 +1002,7 @@ class ListBusinessController extends GetxController {
 
         var stream = http.ByteStream(file.openRead());
         var multipartFile = http.MultipartFile(
-          'media[]',
+          'file', // WP expects "file" (not media[])
           stream,
           fileSize,
           filename: path.basename(file.path),
@@ -1003,38 +1011,23 @@ class ListBusinessController extends GetxController {
         request.files.add(multipartFile);
       }
 
-      // Add optional parameters
+      // 🔹 WP doesn’t use directory/width/height fields directly,
+      // but you can still send meta (custom handling/plugins may use them)
       if (directory != null) request.fields['directory'] = directory;
       if (width != null) request.fields['width'] = width.toString();
       if (height != null) request.fields['height'] = height.toString();
 
-      // Send request
+      // 🔹 Send request
       var response = await request.send();
-
-      // Handle redirects
-      if (response.statusCode == 302 || response.statusCode == 301) {
-        var redirectUrl = response.headers['location'];
-        if (redirectUrl != null) {
-          return await uploadMedia(
-            files,
-            directory: directory,
-            width: width,
-            height: height,
-          );
-        }
-      }
-
       var responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         var jsonData = jsonDecode(responseBody);
 
-        if (jsonData['media'] != null &&
-            jsonData['media'].isNotEmpty &&
-            jsonData['media'][0]['url'] != null) {
-          return jsonData['media'][0]['url'];
+        if (jsonData['id'] != null) {
+          return jsonData['id'].toString(); // ✅ WordPress gives full URL
         } else {
-          throw Exception('Invalid response format: Missing media URL');
+          throw Exception('Invalid response: Missing source_url');
         }
       } else {
         throw Exception(
@@ -1083,7 +1076,7 @@ class ListBusinessController extends GetxController {
       );
 
       String originalDescription = descriptionController.text;
-      String enhancedDescription = _enhanceDescription(originalDescription);
+      String enhancedDescription = await _enhanceDescription(originalDescription);
 
       descriptionController.text = enhancedDescription;
 
@@ -1101,13 +1094,19 @@ class ListBusinessController extends GetxController {
   }
 
   // Enhanced description with better formatting
-  String _enhanceDescription(String original) {
+  Future<String> _enhanceDescription(String original) async {
     try {
-      return "Enhanced: $original - High-quality Business with excellent features, perfect condition, and great value for money.";
+      String newval = await Get.find<AIChatService>().sendMessage(
+        message: original,
+      );
+  
+      return newval;
     } catch (e) {
+      print(e);
       return original; // Fallback to original if enhancement fails
     }
   }
+
 
   // Comprehensive form validation
   bool validateForm() {
@@ -1199,21 +1198,11 @@ class ListBusinessController extends GetxController {
     }
   }
 
-  final SubscriptionService _subscriptionService = SubscriptionService();
-
-  Future<bool> checkListingPermission(String userId) async {
-    return await _subscriptionService.canUserList(userId);
-  }
-
   // Publish listing with comprehensive error handling
   Future<void> publishListing() async {
     try {
       bool pendingPayment = false;
-      var checksub = await checkListingPermission(
-        FirebaseAuth.instance.currentUser!.uid,
-      );
 
-      pendingPayment = checksub;
       isPublishing.value = true;
       isLoading.value = true;
 
@@ -1270,7 +1259,7 @@ class ListBusinessController extends GetxController {
         userId: FirebaseAuth.instance.currentUser!.uid,
         businessName: businessNameController.text.trim(),
         description: descriptionController.text.trim(),
-        businessCategory: businessCategoryValue ?? [],
+        // businessCategory: businessCategoryValue ?? [],
         phoneCall: phoneController.text.trim(),
         photoUrls: imageUrls,
         isActive:
@@ -1309,25 +1298,25 @@ class ListBusinessController extends GetxController {
             isEditMode.value ? existingBusiness?.isVerified ?? false : false,
       );
 
-      if (isEditMode.value) {
-        // Update existing business
-        await _firebaseServices
-            .updateBusiness(existingBusinessId!, businessData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Update timeout'),
-            );
-        _showSuccessSnackbar('Success!', 'Listing updated successfully!');
-      } else {
-        // Create new business
-        await _firebaseServices
-            .createBusiness(businessData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Publishing timeout'),
-            );
-        _showSuccessSnackbar('Success!', 'Listing published successfully!');
-      }
+      // if (isEditMode.value) {
+      //   // Update existing business
+      //   await _firebaseServices
+      //       .updateBusiness(existingBusinessId!, businessData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Update timeout'),
+      //       );
+      //   _showSuccessSnackbar('Success!', 'Listing updated successfully!');
+      // } else {
+      //   // Create new business
+      //   await _firebaseServices
+      //       .createBusiness(businessData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Publishing timeout'),
+      //       );
+      //   _showSuccessSnackbar('Success!', 'Listing published successfully!');
+      // }
 
       // Clear form and navigate
       _clearForm();
@@ -1356,7 +1345,7 @@ class ListBusinessController extends GetxController {
           debugPrintStack(stackTrace: s);
         }
         Get.to(
-          () => SubscriptionManagementScreen(
+          () => FinalSubscriptionManagementScreen(
             userId: FirebaseAuth.instance.currentUser!.uid,
           ),
         )?.then((c) {

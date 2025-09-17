@@ -3,12 +3,14 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'package:dedicated_cowboy/app/models/modules_models/event_model.dart';
+import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/listings_service.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subcriptions_view.dart';
 import 'package:dedicated_cowboy/app/services/subscription_service/subscription_service.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/views/listing/events_listings/listing_item_preview_screen.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/list_item_form.dart';
 import 'package:dedicated_cowboy/views/listing/item_listing/listing_item_preview_screen.dart';
 import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:dedicated_cowboy/views/my_listings/my_listings.dart';
@@ -71,7 +73,7 @@ class ListEventController extends GetxController {
       }
 
       // Set selected values
-      selectedCategories.value = List<String>.from(
+      selectedCategories.value = List<Category>.from(
         existingEvent!.eventCategory ?? [],
       );
 
@@ -199,7 +201,7 @@ class ListEventController extends GetxController {
   final TextEditingController phoneController = TextEditingController();
 
   // Observable variables
-  final RxList<String> selectedCategories = <String>[].obs;
+  final RxList<Category> selectedCategories = <Category>[].obs;
   final RxString selectedSubcategory = RxString('');
   final RxString selectedCondition = RxString('');
   final RxString selectedContactMethod = RxString('');
@@ -240,7 +242,7 @@ class ListEventController extends GetxController {
   ];
 
   // Getters for better access
-  List<String>? get categoryValue =>
+  List<Category>? get categoryValue =>
       selectedCategories.isEmpty ? null : selectedCategories;
   String? get subcategoryValue =>
       selectedSubcategory.value.isEmpty ? null : selectedSubcategory.value;
@@ -354,7 +356,7 @@ class ListEventController extends GetxController {
   }
 
   // Selection methods with error handling
-  void selectCategory(List<String>? category) {
+  void selectCategory(List<Category>? category) {
     try {
       if (category == null) return;
 
@@ -1028,24 +1030,31 @@ class ListEventController extends GetxController {
   // API Upload Media function
   Future<String> uploadMedia(
     List<File> files, {
-    String? directory,
+    String? directory, // not used in WP but kept for compatibility
     int? width,
     int? height,
   }) async {
     try {
+      // 🔹 Check Internet
       if (!await _hasInternetConnection()) {
         throw Exception('No internet connection available');
       }
 
-      var uri = Uri.parse('https://api.tjara.com/api/media/insert');
+      var uri = Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/media');
       var request = http.MultipartRequest('POST', uri);
 
+      // 🔹 Add WordPress Auth (username + app password)
+      const username = "18XLegend";
+      const appPassword = "O9px KmDk isTg PgaW wysH FqL6";
+      final basicAuth =
+          'Basic ${base64Encode(utf8.encode('$username:$appPassword'))}';
+
       request.headers.addAll({
-        'X-Request-From': 'Application',
+        'Authorization': basicAuth,
         'Accept': 'application/json',
       });
 
-      // Add media files with validation
+      // 🔹 Add media files with validation
       for (var file in files) {
         if (!await file.exists()) {
           throw Exception('File does not exist: ${file.path}');
@@ -1056,7 +1065,6 @@ class ListEventController extends GetxController {
           throw Exception('File is empty: ${file.path}');
         }
 
-        // Check file size (max 10MB)
         if (fileSize > 10 * 1024 * 1024) {
           throw Exception(
             'File too large (max 10MB): ${path.basename(file.path)}',
@@ -1065,7 +1073,7 @@ class ListEventController extends GetxController {
 
         var stream = http.ByteStream(file.openRead());
         var multipartFile = http.MultipartFile(
-          'media[]',
+          'file', // WP expects "file" (not media[])
           stream,
           fileSize,
           filename: path.basename(file.path),
@@ -1074,38 +1082,23 @@ class ListEventController extends GetxController {
         request.files.add(multipartFile);
       }
 
-      // Add optional parameters
+      // 🔹 WP doesn’t use directory/width/height fields directly,
+      // but you can still send meta (custom handling/plugins may use them)
       if (directory != null) request.fields['directory'] = directory;
       if (width != null) request.fields['width'] = width.toString();
       if (height != null) request.fields['height'] = height.toString();
 
-      // Send request
+      // 🔹 Send request
       var response = await request.send();
-
-      // Handle redirects
-      if (response.statusCode == 302 || response.statusCode == 301) {
-        var redirectUrl = response.headers['location'];
-        if (redirectUrl != null) {
-          return await uploadMedia(
-            files,
-            directory: directory,
-            width: width,
-            height: height,
-          );
-        }
-      }
-
       var responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         var jsonData = jsonDecode(responseBody);
 
-        if (jsonData['media'] != null &&
-            jsonData['media'].isNotEmpty &&
-            jsonData['media'][0]['url'] != null) {
-          return jsonData['media'][0]['url'];
+        if (jsonData['id'] != null) {
+          return jsonData['id'].toString(); // ✅ WordPress gives full URL
         } else {
-          throw Exception('Invalid response format: Missing media URL');
+          throw Exception('Invalid response: Missing source_url');
         }
       } else {
         throw Exception(
@@ -1154,7 +1147,9 @@ class ListEventController extends GetxController {
       );
 
       String originalDescription = descriptionController.text;
-      String enhancedDescription = _enhanceDescription(originalDescription);
+      String enhancedDescription = await _enhanceDescription(
+        originalDescription,
+      );
 
       descriptionController.text = enhancedDescription;
 
@@ -1172,10 +1167,15 @@ class ListEventController extends GetxController {
   }
 
   // Enhanced description with better formatting
-  String _enhanceDescription(String original) {
+  Future<String> _enhanceDescription(String original) async {
     try {
-      return "Enhanced: $original - High-quality event with excellent features, perfect condition, and great value for money.";
+      String newval = await Get.find<AIChatService>().sendMessage(
+        message: original,
+      );
+
+      return newval;
     } catch (e) {
+      print(e);
       return original; // Fallback to original if enhancement fails
     }
   }
@@ -1259,21 +1259,10 @@ class ListEventController extends GetxController {
     }
   }
 
-  final SubscriptionService _subscriptionService = SubscriptionService();
-
-  Future<bool> checkListingPermission(String userId) async {
-    return await _subscriptionService.canUserList(userId);
-  }
-
   // Publish listing with comprehensive error handling
   Future<void> publishListing() async {
     try {
       bool pendingPayment = false;
-      var checksub = await checkListingPermission(
-        FirebaseAuth.instance.currentUser!.uid,
-      );
-
-      pendingPayment = checksub;
 
       isPublishing.value = true;
       isLoading.value = true;
@@ -1334,7 +1323,7 @@ class ListEventController extends GetxController {
         userId: FirebaseAuth.instance.currentUser!.uid,
         eventName: itemNameController.text.trim(),
         description: descriptionController.text.trim(),
-        eventCategory: selectedCategories,
+        // eventCategory: selectedCategories,
         phoneCall: contactController.text.trim(),
         isFeatured:
             isEditMode.value
@@ -1370,27 +1359,27 @@ class ListEventController extends GetxController {
         email: emailController.text.trim(),
       );
 
-      if (isEditMode.value) {
-        // Update existing event
-        await _firebaseServices
-            .updateEvent(existingEventId.value, eventData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Update timeout'),
-            );
+      // if (isEditMode.value) {
+      //   // Update existing event
+      //   await _firebaseServices
+      //       .updateEvent(existingEventId.value, eventData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Update timeout'),
+      //       );
 
-        _showSuccessSnackbar('Success!', 'Event updated successfully!');
-      } else {
-        // Create new event
-        await _firebaseServices
-            .createEvent(eventData)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () => throw TimeoutException('Publishing timeout'),
-            );
+      //   _showSuccessSnackbar('Success!', 'Event updated successfully!');
+      // } else {
+      //   // Create new event
+      //   await _firebaseServices
+      //       .createEvent(eventData)
+      //       .timeout(
+      //         const Duration(seconds: 30),
+      //         onTimeout: () => throw TimeoutException('Publishing timeout'),
+      //       );
 
-        _showSuccessSnackbar('Success!', 'Event published successfully!');
-      }
+      //   _showSuccessSnackbar('Success!', 'Event published successfully!');
+      // }
 
       // Clear form and navigate
       _clearForm();
@@ -1419,7 +1408,7 @@ class ListEventController extends GetxController {
           debugPrintStack(stackTrace: s);
         }
         Get.to(
-          () => SubscriptionManagementScreen(
+          () => FinalSubscriptionManagementScreen(
             userId: FirebaseAuth.instance.currentUser!.uid,
           ),
         )?.then((c) {

@@ -612,7 +612,7 @@ class BusinessPreviewScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          category,
+                          category.name,
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w500,

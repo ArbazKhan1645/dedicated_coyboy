@@ -1,176 +1,308 @@
-// services/subscription_service.dart
-// ignore_for_file: avoid_print
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
-import 'package:dedicated_cowboy/app/services/subscription_service/controller.dart';
-import 'package:dedicated_cowboy/app/services/subscription_service/notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// services/wordpress_existing_subscription_service.dart
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:dedicated_cowboy/app/models/subscription/subscription_model.dart';
+import 'package:dedicated_cowboy/app/services/auth_service.dart';
+import 'package:get/get.dart';
 
-class SubscriptionService {
-  static final SubscriptionService _instance = SubscriptionService._internal();
-  factory SubscriptionService() => _instance;
-  SubscriptionService._internal();
+class WordPressExistingSubscriptionService {
+  static final WordPressExistingSubscriptionService _instance =
+      WordPressExistingSubscriptionService._internal();
+  factory WordPressExistingSubscriptionService() => _instance;
+  WordPressExistingSubscriptionService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'user_subscriptions';
-  final String _plansCollection = 'subscription_plans';
-  final String _paymentsCollection = 'payment_records';
-  
-  UserSubscription? _cachedSubscription;
-  DateTime? _lastCacheUpdate;
-  static const int _cacheValidityMinutes = 5;
-  
-  // Stripe configuration
-  static const String _stripeSecretKey = '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';
+  static const String baseUrl = 'https://dedicatedcowboy.com/wp-json';
+  static const String plansEndpoint = '/wp/v2/atbdp_pricing_plans';
+  static const String ordersEndpoint = '/wp/v2/atbdp_orders';
+  static const String usersEndpoint = '/wp/v2/users';
 
-  // Initialize subscription plans in Firestore
-  Future<void> initializeSubscriptionPlans() async {
+  // Your existing WordPress credentials (you'll need to set these up)
+  static const String wpUsername = '18XLegend';
+  static const String wpPassword = 'O9px KmDk isTg PgaW wysH FqL6';
+
+  // Get authorization headers for WordPress API
+  Map<String, String> get _authHeaders {
+    String basicAuth =
+        'Basic ${base64Encode(utf8.encode('$wpUsername:$wpPassword'))}';
+    return {'Authorization': basicAuth, 'Content-Type': 'application/json'};
+  }
+
+  // Get all available subscription plans from your existing WordPress setup
+  Future<List<PricingPlan>> getSubscriptionPlans() async {
     try {
-      final snapshot = await _firestore.collection(_plansCollection).limit(1).get();
+      final response = await http.get(
+        Uri.parse('$baseUrl$plansEndpoint'),
+        headers: {'Content-Type': 'application/json'},
+      );
 
-      if (snapshot.docs.isEmpty) {
-        final plans = SubscriptionPlan.getDefaultPlans();
-        final batch = _firestore.batch();
-
-        for (final plan in plans) {
-          final docRef = _firestore.collection(_plansCollection).doc(plan.id);
-          batch.set(docRef, plan.toMap());
-        }
-
-        await batch.commit();
-        print('Subscription plans initialized successfully');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PricingPlan.fromJson(json)).toList();
       } else {
-        print('Subscription plans already exist. Skipping initialization.');
+        print('Error fetching plans: ${response.statusCode}');
+        return [];
       }
     } catch (e) {
-      print('Error initializing subscription plans: $e');
-    }
-  }
-
-  // Get all available subscription plans
-  Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
-    try {
-      final snapshot = await _firestore.collection(_plansCollection).get();
-      return snapshot.docs
-          .map((doc) => SubscriptionPlan.fromMap({...doc.data(), 'id': doc.id}))
-          .toList();
-    } catch (e) {
       print('Error fetching subscription plans: $e');
-      return SubscriptionPlan.getDefaultPlans();
+      return [];
     }
   }
 
-  // Verify Stripe payment before creating subscription
-  Future<bool> verifyStripePayment(String paymentIntentId) async {
+  // Get current user's active plan using your existing user meta system
+  Future<PricingPlan?> getCurrentUserPlan() async {
     try {
-      final url = Uri.parse('https://api.stripe.com/v1/payment_intents/$paymentIntentId');
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) return null;
+
+      // Get the plan ID from user meta as you're already doing
+      final planId = currentUser.meta?['_plan_to_active'].toString();
+      if (planId == null || planId.isEmpty) return null;
+
+      // Fetch the specific plan
       final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_stripeSecretKey',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        Uri.parse('$baseUrl$plansEndpoint/$planId'),
+        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final status = data['status'];
-        return status == 'succeeded';
-      } else {
-        print('Error verifying payment: ${response.statusCode}');
-        return false;
+        return PricingPlan.fromJson(data);
       }
+
+      return null;
     } catch (e) {
-      print('Error verifying Stripe payment: $e');
+      print('Error fetching current user plan: $e');
+      return null;
+    }
+  }
+
+  // Check if user has active subscription using your existing system
+  Future<bool> hasActiveSubscription() async {
+    try {
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) return false;
+
+      // Check user meta for active plan
+      final planId = currentUser.meta?['_plan_to_active'].toString();
+      final subscriptionStatus =
+          currentUser.meta?['_subscription_status'].toString();
+      final expiryDate = currentUser.meta?['_subscription_expiry'].toString();
+
+      if (planId == null || planId.isEmpty) return false;
+      if (subscriptionStatus != 'active') return false;
+
+      // Check expiry date if it exists
+      if (expiryDate != null && expiryDate.isNotEmpty) {
+        final expiry = DateTime.parse(expiryDate);
+        return DateTime.now().isBefore(expiry);
+      }
+
+      // If no expiry date, check if plan exists
+      return planId.isNotEmpty;
+    } catch (e) {
+      print('Error checking active subscription: $e');
       return false;
     }
   }
 
-  // Create a new subscription with enhanced tracking
-  Future<SubscriptionResult> createSubscription({
-    required String userId,
-    required SubscriptionPlan plan,
-    required String stripePaymentIntentId,
-    String? transactionId,
-    Map<String, dynamic>? metadata,
+  // Get subscription status details using your existing meta structure
+  Future<Map<String, dynamic>> getSubscriptionStatus() async {
+    try {
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) {
+        return _getEmptyStatus();
+      }
+
+      final planId = currentUser.meta?['_plan_to_active'].toString();
+      final subscriptionStatus =
+          currentUser.meta?['_subscription_status'].toString();
+      final expiryDate = currentUser.meta?['_subscription_expiry'].toString();
+      final stripeCustomerId =
+          currentUser.meta?['_stripe_customer_key'].toString();
+
+      if (planId == null || planId.isEmpty) {
+        return _getEmptyStatus();
+      }
+
+      // Get plan details
+      final plan = await getCurrentUserPlan();
+      final hasActive = await hasActiveSubscription();
+
+      int daysRemaining = 0;
+      DateTime? expiryDateTime;
+
+      if (expiryDate != null && expiryDate.isNotEmpty) {
+        try {
+          expiryDateTime = DateTime.parse(expiryDate);
+          daysRemaining = expiryDateTime.difference(DateTime.now()).inDays;
+          if (daysRemaining < 0) daysRemaining = 0;
+        } catch (e) {
+          print('Error parsing expiry date: $e');
+        }
+      }
+
+      return {
+        'hasSubscription': true,
+        'isActive': hasActive,
+        'canList': hasActive,
+        'plan':
+            plan != null
+                ? {
+                  'id': plan.id,
+                  'name': plan.title.rendered,
+                  'price': plan.fmPrice,
+                  'description': plan.fmDescription,
+                }
+                : null,
+        'daysRemaining': daysRemaining,
+        'expiryDate': expiryDateTime?.toIso8601String(),
+        'subscriptionStatus': subscriptionStatus ?? 'inactive',
+        'stripeCustomerId': stripeCustomerId ?? '',
+      };
+    } catch (e) {
+      print('Error getting subscription status: $e');
+      return _getEmptyStatus();
+    }
+  }
+
+  Map<String, dynamic> _getEmptyStatus() {
+    return {
+      'hasSubscription': false,
+      'isActive': false,
+      'canList': false,
+      'plan': null,
+      'daysRemaining': 0,
+      'expiryDate': null,
+      'subscriptionStatus': 'inactive',
+      'stripeCustomerId': '',
+    };
+  }
+
+  // Get user's subscription history from your existing orders system
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory() async {
+    try {
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) return [];
+
+      final userId = currentUser.id;
+
+      // Fetch user's orders from your existing system
+      final response = await http.get(
+        Uri.parse('$baseUrl$ordersEndpoint?author=$userId&per_page=100'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> orders = jsonDecode(response.body);
+        return orders.map((order) {
+          final orderData = order as Map<String, dynamic>;
+          return {
+            'id': orderData['id'],
+            'title': orderData['title']?['rendered'] ?? 'Subscription Order',
+            'date': orderData['date'],
+            'status':
+                orderData['_payment_status'] ??
+                orderData['status'] ??
+                'unknown',
+            'amount': orderData['_amount'] ?? '0',
+            'plan_ordered': orderData['_fm_plan_ordered'] ?? '',
+            'transaction_id': orderData['_transaction_id'] ?? '',
+            'payment_gateway': orderData['_payment_gateway'] ?? '',
+            'listing_id': orderData['_listing_id'] ?? '',
+          };
+        }).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('Error fetching subscription history: $e');
+      return [];
+    }
+  }
+
+  // Create a new subscription order (for when processing payments)
+  Future<SubscriptionResult> createSubscriptionOrder({
+    required String planId,
+    required String amount,
+    required String transactionId,
+    required String listingId,
   }) async {
     try {
-      // Check if subscription with this Stripe intent already exists
-      final existingSubscription = await getSubscriptionByStripeIntent(stripePaymentIntentId);
-      if (existingSubscription != null) {
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) {
         return SubscriptionResult(
-          success: true,
-          message: 'Subscription already exists for this payment',
-          subscription: existingSubscription,
+          success: false,
+          message: 'User not authenticated',
         );
       }
 
-      final now = DateTime.now();
-      final expiryDate = now.add(Duration(days: plan.duration));
-      final subscriptionId = _firestore.collection(_collection).doc().id;
-      
-      final subscription = UserSubscription(
-        id: subscriptionId,
-        userId: userId,
-        plan: plan,
-        purchaseDate: now,
-        expiryDate: expiryDate,
-        status: SubscriptionStatus.active,
-        transactionId: transactionId,
-        metadata: metadata ?? {},
+      final userId = currentUser.id;
+      final plan = await _getPlanById(planId);
+
+      if (plan == null) {
+        return SubscriptionResult(success: false, message: 'Plan not found');
+      }
+
+      // Create order using your existing structure
+      final response = await http.post(
+        Uri.parse(
+          'https://dedicatedcowboy.com/wp-json/cowboy/v1/create-atbdp-order',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${authService.currentToken}',
+        },
+        body: jsonEncode({
+          "status": "publish",
+
+          "title": "Order for the listing ID #17538",
+          "author": 247,
+
+          "order_meta": {
+            "plan_ordered": "14753",
+            "listing_id": "175387",
+            "amount": "5",
+            "payment_gateway": "stripe_gateway",
+            "payment_status": "completed",
+            "transaction_id": "sub_1S5ptp059qvy9eXzzV2LhOkX",
+            "order_status": "",
+          },
+          "_fm_plan_ordered": "14753",
+          "_listing_id": "175387",
+          "_amount": "5",
+          "_payment_gateway": "stripe_gateway",
+          "_payment_status": "completed",
+          "_transaction_id": "sub_1S5ptp059qvy9eXzzV2LhOkX",
+          "_order_status": "",
+        }),
       );
 
-      // Create payment record for tracking
-      final paymentRecord = PaymentRecord(
-        id: _firestore.collection(_paymentsCollection).doc().id,
-        userId: userId,
-        subscriptionId: subscriptionId,
-        stripePaymentIntentId: stripePaymentIntentId,
-        amount: plan.price,
-        currency: 'GBP',
-        status: 'completed',
-        createdAt: now,
-        metadata: metadata ?? {},
-      );
+      if (response.statusCode == 200) {
+        // Update user meta with subscription details
+        await _updateUserSubscription(userId.toString(), planId, transactionId);
 
-      // Use batch to ensure atomicity
-      final batch = _firestore.batch();
-
-      // Cancel any existing active subscriptions first
-      await _cancelExistingSubscriptions(userId, batch);
-
-      // Add new subscription
-      batch.set(
-        _firestore.collection(_collection).doc(subscriptionId),
-        subscription.toFirestore(),
-      );
-
-      // Add payment record
-      batch.set(
-        _firestore.collection(_paymentsCollection).doc(paymentRecord.id),
-        paymentRecord.toMap(),
-      );
-
-      await batch.commit();
-
-      // Update cache
-      _cachedSubscription = subscription;
-      _lastCacheUpdate = DateTime.now();
-      await _saveCacheToLocal();
-
-      // Schedule notifications
-      await _scheduleExpiryNotifications(subscription);
-
-      return SubscriptionResult(
-        success: true,
-        message: 'Subscription created successfully',
-        subscription: subscription,
-      );
+        return SubscriptionResult(
+          success: true,
+          message: 'Subscription created successfully',
+          data: {'order_id': jsonDecode(response.body)['id']},
+        );
+      } else {
+        return SubscriptionResult(
+          success: false,
+          message: 'Failed to create subscription order: ${response.body}',
+        );
+      }
     } catch (e) {
-      print('Error creating subscription: $e');
       return SubscriptionResult(
         success: false,
         message: 'Error creating subscription: $e',
@@ -178,453 +310,138 @@ class SubscriptionService {
     }
   }
 
-  // Get subscription by Stripe payment intent
-  Future<UserSubscription?> getSubscriptionByStripeIntent(String stripeIntentId) async {
+  // Update user subscription meta data
+  Future<void> _updateUserSubscription(
+    String userId,
+    String planId,
+    String transactionId,
+  ) async {
     try {
-      final paymentQuery = await _firestore
-          .collection(_paymentsCollection)
-          .where('stripePaymentIntentId', isEqualTo: stripeIntentId)
-          .limit(1)
-          .get();
+      final authService = Get.find<AuthService>();
+      // Calculate expiry date (1 year from now by default)
+      final expiryDate =
+          DateTime.now().add(Duration(days: 365)).toIso8601String();
 
-      if (paymentQuery.docs.isEmpty) return null;
+      final response = await http.post(
+        Uri.parse('$baseUrl$usersEndpoint/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${authService.currentToken}',
+        },
+        body: jsonEncode({
+          'meta': {
+            '_stripe_customer_key': "cus_SlRBgEoKxFFNE6",
+            "wp_user_level": 0,
+            'wp_capabilities': ['Subscriber'],
+            '_plan_to_active': "14753",
+            '_subscription_expiry': expiryDate,
+            '_subscription_status': 'active',
+            '_subscription_activated_at': DateTime.now().toIso8601String(),
+            '_stripe_transaction_id': transactionId,
+          },
+        }),
+      );
 
-      final paymentRecord = paymentQuery.docs.first.data();
-      final subscriptionId = paymentRecord['subscriptionId'];
-
-      final subscriptionDoc = await _firestore
-          .collection(_collection)
-          .doc(subscriptionId)
-          .get();
-
-      if (!subscriptionDoc.exists) return null;
-
-      return UserSubscription.fromFirestore(subscriptionDoc);
+      if (response.statusCode != 200) {
+        print('Failed to update user subscription meta: ${response.body}');
+      }
     } catch (e) {
-      print('Error getting subscription by Stripe intent: $e');
+      print('Error updating user subscription: $e');
+    }
+  }
+
+  // Helper method to get plan by ID
+  Future<PricingPlan?> _getPlanById(String planId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$plansEndpoint/$planId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return PricingPlan.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching plan by ID: $e');
       return null;
     }
   }
 
-  // Update payment status for user's listings
-  Future<void> updateUserListingsPaymentStatus(String userId) async {
+  // Cancel subscription (update user meta)
+  Future<bool> cancelSubscription() async {
     try {
-      final batch = _firestore.batch();
-      final now = DateTime.now();
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
 
-      // Collections to update
-      final collections = ['events', 'businesses', 'items'];
+      if (currentUser == null) return false;
 
-      for (final collectionName in collections) {
-        final query = await _firestore
-            .collection(collectionName)
-            .where('userId', isEqualTo: userId)
-            .where('paymentStatus', isEqualTo: 'pending')
-            .where('createdAt', isLessThan: Timestamp.fromDate(now))
-            .get();
+      final userId = currentUser.id.toString();
 
-        for (final doc in query.docs) {
-          batch.update(doc.reference, {
-            'paymentStatus': 'paid',
-            'paymentUpdatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
+      final response = await http.post(
+        Uri.parse('$baseUrl$usersEndpoint/$userId'),
+        headers: _authHeaders,
+        body: jsonEncode({
+          'meta': {
+            '_subscription_status': null,
+            '_subscription_cancelled_at': null,
+          },
+        }),
+      );
 
-      await batch.commit();
-      print('Updated payment status for user listings: $userId');
-    } catch (e) {
-      print('Error updating user listings payment status: $e');
-      rethrow;
-    }
-  }
-
-  // Check and update payment status on app initialization
-  Future<void> initializeAndUpdatePaymentStatus(String userId) async {
-    try {
-      // Check if user has active subscription
-      final hasActiveSubscription = await this.hasActiveSubscription(userId);
-      
-      if (hasActiveSubscription) {
-        // Update payment status for all pending listings
-        await updateUserListingsPaymentStatus(userId);
-      }
-
-      // Check for any missed payments that were completed in Stripe
-      await _checkMissedPayments(userId);
-    } catch (e) {
-      print('Error initializing payment status: $e');
-    }
-  }
-
-  // Check for missed payments in Stripe
-  Future<void> _checkMissedPayments(String userId) async {
-    try {
-      // Get all payment records for this user
-      final paymentQuery = await _firestore
-          .collection(_paymentsCollection)
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .limit(10) // Check last 10 payments
-          .get();
-
-      for (final paymentDoc in paymentQuery.docs) {
-        final paymentData = paymentDoc.data();
-        final stripeIntentId = paymentData['stripePaymentIntentId'];
-        final localStatus = paymentData['status'];
-
-        // If local status is not completed, verify with Stripe
-        if (localStatus != 'completed') {
-          final isVerified = await verifyStripePayment(stripeIntentId);
-          if (isVerified) {
-            // Update local payment record
-            await _firestore.collection(_paymentsCollection).doc(paymentDoc.id).update({
-              'status': 'completed',
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-
-            // Check if subscription exists, if not create it
-            final subscription = await getSubscriptionByStripeIntent(stripeIntentId);
-            if (subscription == null) {
-              // Recreation logic would go here if needed
-              print('Found verified payment without subscription: $stripeIntentId');
-            }
-          }
-        }
-      }
-    } catch (e) {
-      print('Error checking missed payments: $e');
-    }
-  }
-
-  // Get user's current active subscription with enhanced caching
-  Future<UserSubscription?> getCurrentSubscription(
-    String userId, {
-    bool forceRefresh = false,
-  }) async {
-    try {
-      // Check cache first
-      if (!forceRefresh && _isCacheValid() && _cachedSubscription?.userId == userId) {
-        return _cachedSubscription;
-      }
-
-      final query = await _firestore
-          .collection(_collection)
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'active')
-          .orderBy('expiryDate', descending: true)
-          .limit(1)
-          .get();
-
-      if (query.docs.isEmpty) {
-        _cachedSubscription = null;
-        await _clearCache();
-        return null;
-      }
-
-      final subscription = UserSubscription.fromFirestore(query.docs.first);
-
-      // Check if subscription is actually expired
-      if (subscription.isExpired) {
-        await _expireSubscription(subscription.id);
-        _cachedSubscription = null;
-        await _clearCache();
-        return null;
-      }
-
-      // Update cache
-      _cachedSubscription = subscription;
-      _lastCacheUpdate = DateTime.now();
-      await _saveCacheToLocal();
-
-      return subscription;
-    } catch (e) {
-      print('Error getting current subscription: $e');
-      // Try to load from local cache as fallback
-      return await _loadCacheFromLocal();
-    }
-  }
-
-  // Check if user has an active subscription
-  Future<bool> hasActiveSubscription(String userId) async {
-    final subscription = await getCurrentSubscription(userId);
-    return subscription?.isActive == true;
-  }
-
-  // Check if user can create listings
-  Future<bool> canUserList(String userId) async {
-    return await hasActiveSubscription(userId);
-  }
-
-  // Get subscription status details
-  Future<Map<String, dynamic>> getSubscriptionStatus(String userId) async {
-    final subscription = await getCurrentSubscription(userId);
-
-    if (subscription == null) {
-      return {
-        'hasSubscription': false,
-        'isActive': false,
-        'canList': false,
-        'plan': null,
-        'daysRemaining': 0,
-        'hoursRemaining': 0,
-        'expiryDate': null,
-      };
-    }
-
-    return {
-      'hasSubscription': true,
-      'isActive': subscription.isActive,
-      'canList': subscription.isActive,
-      'plan': subscription.plan.toMap(),
-      'daysRemaining': subscription.daysRemaining,
-      'hoursRemaining': subscription.hoursRemaining,
-      'expiryDate': subscription.expiryDate.toIso8601String(),
-    };
-  }
-
-  // Cancel subscription
-  Future<bool> cancelSubscription(String userId) async {
-    try {
-      final subscription = await getCurrentSubscription(userId);
-      if (subscription == null) return false;
-
-      await _firestore.collection(_collection).doc(subscription.id).update({
-        'status': 'cancelled',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Clear cache
-      _cachedSubscription = null;
-      await _clearCache();
-
-      // Cancel scheduled notifications
-      await NotificationService().cancelNotification(subscription.id.hashCode);
-
-      return true;
+      return response.statusCode == 200;
     } catch (e) {
       print('Error cancelling subscription: $e');
       return false;
     }
   }
 
-  // Get subscription history
-  Future<List<UserSubscription>> getSubscriptionHistory(String userId) async {
+  // Get user's Stripe customer ID from your existing meta
+  String? getStripeCustomerId() {
     try {
-      final query = await _firestore
-          .collection(_collection)
-          .where('userId', isEqualTo: userId)
-          .orderBy('purchaseDate', descending: true)
-          .get();
+      final authService = Get.find<AuthService>();
+      final currentUser = authService.currentUser;
 
-      return query.docs
-          .map((doc) => UserSubscription.fromFirestore(doc))
-          .toList();
+      if (currentUser == null) return null;
+
+      return currentUser.meta?['_stripe_customer_key'].toString();
     } catch (e) {
-      print('Error getting subscription history: $e');
-      return [];
+      print('Error getting Stripe customer ID: $e');
+      return null;
     }
   }
 
-  // Private methods
-  Future<void> _cancelExistingSubscriptions(String userId, [WriteBatch? batch]) async {
-    final query = await _firestore
-        .collection(_collection)
-        .where('userId', isEqualTo: userId)
-        .where('status', isEqualTo: 'active')
-        .get();
-
-    final batchToUse = batch ?? _firestore.batch();
-    for (final doc in query.docs) {
-      batchToUse.update(doc.reference, {
-        'status': 'cancelled',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    }
-    
-    if (batch == null) {
-      await batchToUse.commit();
-    }
-  }
-
-  Future<void> _expireSubscription(String subscriptionId) async {
-    await _firestore.collection(_collection).doc(subscriptionId).update({
-      'status': 'expired',
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  bool _isCacheValid() {
-    if (_lastCacheUpdate == null) return false;
-    return DateTime.now().difference(_lastCacheUpdate!).inMinutes < _cacheValidityMinutes;
-  }
-
-  Future<void> _saveCacheToLocal() async {
+  // Check if user needs to renew subscription based on expiry
+  Future<bool> needsRenewal() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (_cachedSubscription != null) {
-        final cacheData = {
-          'subscription': _cachedSubscription!.toFirestore(),
-          'lastUpdate': _lastCacheUpdate!.toIso8601String(),
-        };
-        await prefs.setString('cached_subscription', jsonEncode(cacheData));
-      }
+      final status = await getSubscriptionStatus();
+      final daysRemaining = status['daysRemaining'] as int;
+
+      // Consider renewal needed if less than 7 days remaining
+      return daysRemaining <= 7 && daysRemaining >= 0;
     } catch (e) {
-      print('Error saving cache to local: $e');
+      print('Error checking renewal status: $e');
+      return false;
     }
   }
 
-  Future<UserSubscription?> _loadCacheFromLocal() async {
+  // Refresh user data to get latest subscription info
+  Future<void> refreshUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cacheString = prefs.getString('cached_subscription');
-      if (cacheString == null) return null;
-
-      final cacheData = jsonDecode(cacheString);
-      _lastCacheUpdate = DateTime.parse(cacheData['lastUpdate']);
-
-      if (_isCacheValid()) {
-        final data = Map<String, dynamic>.from(cacheData['subscription']);
-        _cachedSubscription = UserSubscription(
-          id: data['id'] ?? '',
-          userId: data['userId'] ?? '',
-          plan: SubscriptionPlan.fromMap(data['plan']),
-          purchaseDate: (data['purchaseDate'] as Timestamp).toDate(),
-          expiryDate: (data['expiryDate'] as Timestamp).toDate(),
-          status: SubscriptionStatus.values.firstWhere(
-            (e) => e.toString() == 'SubscriptionStatus.${data['status']}',
-            orElse: () => SubscriptionStatus.pending,
-          ),
-          transactionId: data['transactionId'],
-          metadata: Map<String, dynamic>.from(data['metadata'] ?? {}),
-        );
-        return _cachedSubscription;
-      }
+      final authService = Get.find<AuthService>();
+      await authService.refreshUser();
     } catch (e) {
-      print('Error loading cache from local: $e');
-    }
-    return null;
-  }
-
-  Future<void> _clearCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('cached_subscription');
-      _cachedSubscription = null;
-      _lastCacheUpdate = null;
-    } catch (e) {
-      print('Error clearing cache: $e');
-    }
-  }
-
-  Future<void> _scheduleExpiryNotifications(UserSubscription subscription) async {
-    final notificationService = NotificationService();
-
-    final notifications = [
-      {
-        'days': 7,
-        'title': 'Subscription Expiring Soon',
-        'body': 'Your subscription expires in 7 days. Renew now to continue listing.',
-      },
-      {
-        'days': 3,
-        'title': 'Subscription Expiring Soon',
-        'body': 'Your subscription expires in 3 days. Don\'t miss out on listings!',
-      },
-      {
-        'days': 1,
-        'title': 'Subscription Expires Tomorrow',
-        'body': 'Your subscription expires tomorrow. Renew now to avoid interruption.',
-      },
-    ];
-
-    for (final notification in notifications) {
-      final notificationDate = subscription.expiryDate.subtract(
-        Duration(days: notification['days'] as int),
-      );
-      if (notificationDate.isAfter(DateTime.now())) {
-        await notificationService.scheduleNotification(
-          id: '${subscription.id}_${notification['days']}'.hashCode,
-          title: notification['title'] as String,
-          body: notification['body'] as String,
-          scheduledDate: notificationDate,
-        );
-      }
-    }
-  }
-
-  // Periodic cleanup of expired subscriptions
-  Future<void> cleanupExpiredSubscriptions() async {
-    try {
-      final query = await _firestore
-          .collection(_collection)
-          .where('status', isEqualTo: 'active')
-          .where('expiryDate', isLessThan: Timestamp.now())
-          .get();
-
-      final batch = _firestore.batch();
-      for (final doc in query.docs) {
-        batch.update(doc.reference, {
-          'status': 'expired',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-      await batch.commit();
-    } catch (e) {
-      print('Error cleaning up expired subscriptions: $e');
+      print('Error refreshing user data: $e');
     }
   }
 }
 
-// Payment Record Model for tracking
-class PaymentRecord {
-  final String id;
-  final String userId;
-  final String subscriptionId;
-  final String stripePaymentIntentId;
-  final double amount;
-  final String currency;
-  final String status;
-  final DateTime createdAt;
-  final Map<String, dynamic> metadata;
+// Result classes
+class SubscriptionResult {
+  final bool success;
+  final String message;
+  final Map<String, dynamic>? data;
 
-  PaymentRecord({
-    required this.id,
-    required this.userId,
-    required this.subscriptionId,
-    required this.stripePaymentIntentId,
-    required this.amount,
-    required this.currency,
-    required this.status,
-    required this.createdAt,
-    required this.metadata,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'userId': userId,
-      'subscriptionId': subscriptionId,
-      'stripePaymentIntentId': stripePaymentIntentId,
-      'amount': amount,
-      'currency': currency,
-      'status': status,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'metadata': metadata,
-    };
-  }
-
-  factory PaymentRecord.fromMap(Map<String, dynamic> map) {
-    return PaymentRecord(
-      id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
-      subscriptionId: map['subscriptionId'] ?? '',
-      stripePaymentIntentId: map['stripePaymentIntentId'] ?? '',
-      amount: (map['amount'] ?? 0.0).toDouble(),
-      currency: map['currency'] ?? 'GBP',
-      status: map['status'] ?? 'pending',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      metadata: Map<String, dynamic>.from(map['metadata'] ?? {}),
-    );
-  }
+  SubscriptionResult({required this.success, required this.message, this.data});
 }
