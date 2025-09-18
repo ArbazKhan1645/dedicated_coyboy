@@ -1670,6 +1670,7 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
         return GestureDetector(
           onTap: () => _navigateToProductDetail(listing),
           child: UnifiedProductCard(
+            key: Key(listing.id.toString()),
             listing: listing,
             categorySelected: [selectedMainCategory],
             onFavoriteTap: () {

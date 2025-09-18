@@ -13,7 +13,7 @@ class HomeController extends GetxController {
       imageUrl: 'assets/images/Rectangle 3463809 (1).png',
     ),
     Category(
-      title: 'Tack & Live Stock',
+      title: 'Tack & Livestock',
       imageUrl: 'assets/images/Rectangle 3463809 (2).png',
     ),
     Category(

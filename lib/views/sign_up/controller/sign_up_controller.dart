@@ -1,4 +1,5 @@
 // views/sign_up/controller/sign_up_controller.dart
+import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
@@ -143,6 +144,14 @@ class SignUpController extends GetxController {
 
       // Navigate to main app
       Get.offAll(() => CustomCurvedNavBar());
+      try {
+        await EmailTemplates.sendRegistrationWelcomeEmail(
+          recipientEmail: email,
+          recipientName: 'User',
+        );
+      } catch (e) {
+        print(e);
+      }
     } on AuthException catch (e) {
       _handleAuthException(e);
     } catch (e) {

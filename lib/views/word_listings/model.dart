@@ -22,6 +22,8 @@ class UnifiedListing {
   final String? price;
   final String? listingPricing;
   final Map<String, dynamic>? listingImg;
+  final Map<String, dynamic>? meta;
+
   final String? listingPrvImg;
   final String? featured;
   final String? listingStatus;
@@ -41,6 +43,7 @@ class UnifiedListing {
     this.modified,
     this.listingTypes,
     this.categories,
+    this.meta,
     this.locations,
     this.tags,
     this.email,
@@ -69,9 +72,9 @@ class UnifiedListing {
     final yoastHead = json['image_urls'] as Map<String, dynamic>?;
     if (yoastHead != null) {
       featuredImage =
-          yoastHead['featured_thumb'] ??
+          yoastHead['featured'] ??
           yoastHead['featured_medium'] ??
-          yoastHead['featured'];
+          yoastHead['featured_thumb'];
       extractedImages.add(
         ListingImage(
           url: featuredImage,
@@ -99,35 +102,6 @@ class UnifiedListing {
       }
     }
 
-    // if (json['_listing_img'] != null && json['_listing_img'] is Map) {
-    //   final listingImgMap = json['_listing_img'] as Map<String, dynamic>;
-    //   // These are typically image IDs, you might need to construct URLs
-    //   // For now, we'll store the IDs and note they need URL resolution
-    //   listingImgMap.forEach((key, imageId) {
-    //     extractedImages.add(
-    //     ListingImage(
-    //           url: imageUrl,
-    //           width: null,
-    //           height: null,
-    //           type: 'image/jpeg',
-    //           source: 'yoast_head',
-    //         ),
-    //     );
-    //   });
-    // }
-
-    // // 3. Handle featured image from _listing_prv_img
-    // if (json['_listing_prv_img'] != null) {
-    //   final prvImgId = json['_listing_prv_img'];
-    //   extractedImages.add(
-    //     ListingImage(
-    //       id: prvImgId is int ? prvImgId : int.tryParse(prvImgId.toString()),
-    //       source: 'featured_img',
-    //       isFeatured: true,
-    //     ),
-    //   );
-    // }
-
     return UnifiedListing(
       id: json['id'],
       title: json['title']?['rendered'],
@@ -141,7 +115,6 @@ class UnifiedListing {
       listingTypes: (json['atbdp_listing_types'] as List?)?.cast<int>(),
       categories: (json['at_biz_dir-category'] as List?)?.cast<int>(),
       locations: (json['at_biz_dir-location'] as List?)?.cast<int>(),
-      // tags: (json['at_biz_dir-tags'] as List?)?.cast<int>(),
       email: json['_email'],
       phone: json['_phone'],
       address: json['_address'],
@@ -149,10 +122,9 @@ class UnifiedListing {
       manualLng: json['_manual_lng'],
       lat: json['_lat'],
       lng: json['_lng'],
+      meta: json['meta'] ?? {},
       price: json['_price'],
       listingPricing: json['_atbd_listing_pricing'],
-      // listingImg: json['_listing_img'],
-      // listingPrvImg: json['_listing_prv_img'],
       featured: json['_featured'],
       listingStatus: json['_listing_status'],
       images: extractedImages.isEmpty ? null : extractedImages,
@@ -181,6 +153,7 @@ class UnifiedListing {
       '_manual_lat': manualLat,
       '_manual_lng': manualLng,
       '_lat': lat,
+      'meta': meta,
       '_lng': lng,
       '_price': price,
       '_atbd_listing_pricing': listingPricing,
@@ -219,15 +192,17 @@ class UnifiedListing {
 
   double? get latitude {
     if (lat != null && lat!.isNotEmpty) return double.tryParse(lat!);
-    if (manualLat != null && manualLat!.isNotEmpty)
+    if (manualLat != null && manualLat!.isNotEmpty) {
       return double.tryParse(manualLat!);
+    }
     return null;
   }
 
   double? get longitude {
     if (lng != null && lng!.isNotEmpty) return double.tryParse(lng!);
-    if (manualLng != null && manualLng!.isNotEmpty)
+    if (manualLng != null && manualLng!.isNotEmpty) {
       return double.tryParse(manualLng!);
+    }
     return null;
   }
 

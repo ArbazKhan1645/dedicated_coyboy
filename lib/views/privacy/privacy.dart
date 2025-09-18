@@ -50,8 +50,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.security_rounded, size: 48, color: themeColor),
-                  const SizedBox(height: 16),
                   const Text(
                     'Dedicated Cowboy',
                     style: TextStyle(
@@ -60,30 +58,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       color: darkBrown,
                     ),
                   ),
+                  Text('Privacy Policy'),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Effective Date: July 27, 2025',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: darkBrown,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+
                   const Text(
-                    'We are committed to protecting your privacy. This policy explains how we collect, use, store, and share your information.',
+                    'Dedicated Cowboy (“we,” “us,” or “our”) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and share your information when you use our website, mobile app, and related services (collectively, the “Service”).',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: lightBrown),
+                    style: TextStyle(fontSize: 12, color: lightBrown),
                   ),
                 ],
               ),
@@ -165,6 +146,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
             _buildSection(
               '11. Changes to This Policy',
               'We may update this Privacy Policy from time to time. Material changes will be posted on our website. Continued use of the Service after such changes constitutes your agreement to the new policy.',
+            ),
+            const Text(
+              'Effective Date: July 27, 2025',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: darkBrown,
+              ),
             ),
 
             // Contact Section

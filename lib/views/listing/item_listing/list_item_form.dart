@@ -1222,6 +1222,7 @@ class _CustomMultiSelectFieldState extends State<CustomMultiSelectField> {
       } else {
         _selectedCategories.add(category);
       }
+      _isExpanded = false;
     });
     widget.onSelectionChanged(_selectedCategories);
   }

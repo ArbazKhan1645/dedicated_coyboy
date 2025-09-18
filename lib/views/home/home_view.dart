@@ -32,7 +32,7 @@ class HomeView extends StatelessWidget {
   Widget _categoryCard(BuildContext context, Category category) {
     return GestureDetector(
       onTap: () {
-        print(categoriesStaticNumber[category.title]?['children']);
+   
         Get.to(
           () => WebsiteProductListingScreen(
             initialCategory: [

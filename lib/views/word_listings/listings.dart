@@ -91,6 +91,7 @@ class _WebsiteProductListingScreenState
 
       setState(() {
         _allListings = listings;
+
         _filteredListings = _filterListings(listings);
         isLoading = false;
       });
@@ -198,6 +199,8 @@ class _WebsiteProductListingScreenState
     return earthRadiusMiles * c;
   }
 
+  List<UnifiedListing> listingsStateSave = [];
+
   void _sortListings(List<UnifiedListing> listings) {
     switch (sortBy) {
       case 'Price: Low to High':
@@ -220,7 +223,7 @@ class _WebsiteProductListingScreenState
       case 'Name: Z to A':
         listings.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
         break;
-      case 'Newest First':
+      case 'Latest Listings':
         listings.sort((a, b) {
           if (a.createdAt == null && b.createdAt == null) return 0;
           if (a.createdAt == null) return 1;
@@ -228,13 +231,16 @@ class _WebsiteProductListingScreenState
           return b.createdAt!.compareTo(a.createdAt!);
         });
         break;
-      default:
+      case 'Oldest Listings':
         listings.sort((a, b) {
           if (a.createdAt == null && b.createdAt == null) return 0;
           if (a.createdAt == null) return 1;
           if (b.createdAt == null) return -1;
-          return b.createdAt!.compareTo(a.createdAt!);
+          return a.createdAt!.compareTo(b.createdAt!);
         });
+        break;
+      default:
+        listings = _allListings;
         break;
     }
   }
@@ -633,10 +639,37 @@ class _WebsiteProductListingScreenState
                     itemBuilder:
                         (BuildContext context) => [
                           PopupMenuItem(
-                            value: '',
+                            value: 'Name: A to Z',
                             child: Center(
                               child: Text(
-                                'All',
+                                'A to Z ( title )',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'Name: Z to A',
+                            child: Center(
+                              child: Text(
+                                'Z to A ( title )',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'Latest Listings',
+                            child: Center(
+                              child: Text(
+                                'Latest Listings',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'Oldest Listings',
+                            child: Center(
+                              child: Text(
+                                'Oldest Listings',
                                 style: TextStyle(color: Colors.white),
                               ),
                             ),
@@ -662,29 +695,12 @@ class _WebsiteProductListingScreenState
                               ),
                             ),
                           ],
+
                           PopupMenuItem(
-                            value: 'Name: A to Z',
+                            value: '',
                             child: Center(
                               child: Text(
-                                'Name: A to Z',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'Name: Z to A',
-                            child: Center(
-                              child: Text(
-                                'Name: Z to A',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'Newest First',
-                            child: Center(
-                              child: Text(
-                                'Newest First',
+                                'Random Listings',
                                 style: TextStyle(color: Colors.white),
                               ),
                             ),
@@ -757,14 +773,23 @@ class _WebsiteProductListingScreenState
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.65,
+                    childAspectRatio: 0.63,
                   ),
                   itemCount: _filteredListings.length,
                   itemBuilder: (context, index) {
                     final listing = _filteredListings[index];
                     return GestureDetector(
-                      onTap: () => widget.onProductTap(listing),
+                      onTap: () {
+                        FocusScope.of(context).unfocus();
+                        Widget page;
+                        page = UnifiedDetailScreen(listing: listing);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => page),
+                        ).then((value) => setState(() {}));
+                      },
                       child: UnifiedProductCard(
+                        key: Key(listing.id.toString()),
                         listing: listing,
                         categorySelected:
                             currentCategories

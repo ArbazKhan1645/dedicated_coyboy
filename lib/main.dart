@@ -9,6 +9,7 @@ import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
 import 'package:dedicated_cowboy/bindings/initial_bindings.dart';
 import 'package:dedicated_cowboy/firebase_options.dart';
+import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:dedicated_cowboy/views/welcome/welcome_view.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -50,12 +51,14 @@ Future<void> main() async {
 
   await Get.putAsync(() => ai_chat_service.init());
 
-  // await EmailTemplates.sendListingUnderReviewEmail(
-  //   recipientEmail: 'shahlili1645@gmail.com',
-  //   recipientName: 'Shah Lili',
-  //   listingTitle: 'Testing Laptop Arbaz',
-  //   listingUrl: 'https://dedicatedcowboy.com/Testing Laptop Arbaz',
-  // );
+  // try {
+  //   await EmailTemplates.sendRegistrationWelcomeEmail(
+  //     recipientEmail: 'shahlili1645@gmail.com',
+  //     recipientName: 'User',
+  //   );
+  // } catch (e) {
+  //   print(e);
+  // }
 
   // final userStatusService = UserStatusService();
   // userStatusService.init();

@@ -1872,3 +1872,21 @@ final Map<String, Map<String, dynamic>> categoriesStaticNumber = {
     ],
   },
 };
+
+String? getCategoryNameById(int id) {
+  for (var category in categoriesStaticNumber.values) {
+    // check parent
+    if (category['id'] == id) {
+      return category['name'];
+    }
+
+    // check children
+    List children = category['children'] ?? [];
+    for (var child in children) {
+      if (child['id'] == id) {
+        return child['name'];
+      }
+    }
+  }
+  return null; // not found
+}

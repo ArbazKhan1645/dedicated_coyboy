@@ -1,13 +1,14 @@
-// Unified Detail Screen that handles all listing types
 import 'package:dedicated_cowboy/app/models/api_user_model.dart';
 import 'package:dedicated_cowboy/app/services/auth_service.dart';
 import 'package:dedicated_cowboy/app/services/chat_room_service/chat_room_service.dart';
 import 'package:dedicated_cowboy/views/chats/chats_view.dart';
+import 'package:dedicated_cowboy/views/listing/item_listing/controller/add_listing_controller.dart';
 import 'package:dedicated_cowboy/views/word_listings/model.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:share_plus/share_plus.dart';
 
 class UnifiedDetailScreen extends StatefulWidget {
   final UnifiedListing listing;
@@ -19,6 +20,103 @@ class UnifiedDetailScreen extends StatefulWidget {
 }
 
 class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
+  Future<void> _removeFavorite(UnifiedListing listing) async {
+    try {
+      final currentUser = Get.find<AuthService>().currentUser;
+      if (currentUser != null) {
+        currentUser.favouriteListings?.remove(listing.id);
+        ApiUserModel currentUserupdated = currentUser.removeFromFavourites(
+          listing.id ?? 0,
+        );
+        Get.find<AuthService>().updateUserProfileDetails(
+          updateData: {
+            "meta": {
+              "atbdp_favourites": currentUserupdated.favouriteListingIds,
+            },
+          },
+        );
+
+        Get.snackbar(
+          'Removed',
+          '${listing.title} removed from favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+
+        setState(() {});
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to remove from favorites',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> _addListing(UnifiedListing listing) async {
+    try {
+      final currentUser = Get.find<AuthService>().currentUser;
+      if (currentUser != null) {
+        currentUser.favouriteListings?.add(listing.id ?? -1);
+        ApiUserModel currentUserupdated = currentUser.addToFavourites(
+          listing.id ?? 0,
+        );
+        Get.find<AuthService>().updateUserProfileDetails(
+          updateData: {
+            "meta": {
+              "atbdp_favourites": currentUserupdated.favouriteListingIds,
+            },
+          },
+        );
+
+        Get.snackbar(
+          'Added',
+          '${listing.title} Added to favorites',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Color(0xFFF2B342),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+
+        setState(() {});
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to Add to favorites',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> _toggleFavorite(bool val) async {
+    if (val == false) {
+      _addListing(widget.listing);
+    } else {
+      _removeFavorite(widget.listing);
+    }
+  }
+
+  Future<bool> _checkFavoriteStatus(UnifiedListing listing) async {
+    var isFav = Get.find<AuthService>().currentUser?.isListingFavourite(
+      listing.id ?? -1,
+    );
+
+    if (isFav != null) {
+      return isFav;
+    }
+    return false;
+  }
+
   final PageController _pageController = PageController();
   int _currentImageIndex = 0;
 
@@ -43,6 +141,33 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
     }
   }
 
+  bool _isPopular() {
+    final postViews =
+        int.tryParse(metaData['_atbdp_post_views_count']?.first ?? '0') ?? 0;
+    final pageViews = int.tryParse(metaData['wl_pageviews']?.first ?? '0') ?? 0;
+    final totalViews = postViews + pageViews;
+
+    return postViews >= 10; // Threshold for popular items
+  }
+
+  void _shareItem() {
+    final String shareText = _buildShareText();
+    Share.share(shareText);
+  }
+
+  String _buildShareText() {
+    final title = widget.listing.slug ?? 'Check out this listing';
+    final price = _getPrice();
+    final url =
+        widget.listing.link ??
+        'https://dedicatedcowboy.com/directory/${widget.listing.slug}/';
+
+    return '$title${price.isNotEmpty ? ' - $price' : ''}\n\n$url';
+  }
+
+  // Dynamic meta data getter
+  Map<String, dynamic> get metaData => widget.listing.meta ?? {};
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,7 +185,7 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
               '${_getListingTypeCategory()}/',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: 12,
                 fontWeight: FontWeight.normal,
               ),
             ),
@@ -68,32 +193,61 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
               widget.listing.slug ?? '',
               style: TextStyle(
                 color: Color(0xFFF2B342),
-                fontSize: 16,
+                fontSize: 12,
                 fontWeight: FontWeight.normal,
               ),
             ),
           ],
         ),
-        actions: [
-          // ReportButton(
-          //   listingId: widget.listing.id?.toString() ?? '',
-          //   listingType: widget.listing.listingType,
-          //   listingName: widget.listing.title ?? 'Unnamed ${widget.listing.listingType}',
-          //   listingImage: null, // Will need to implement image extraction
-          // ),
-          SizedBox(width: 20),
-        ],
+        actions: [SizedBox(width: 20)],
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Media Gallery Section
-            _buildMediaGallery(),
+            // Enhanced Media Gallery Section
+            _buildEnhancedMediaGallery(),
+            Row(
+              children: [
+                FutureBuilder(
+                  future: _checkFavoriteStatus(widget.listing),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container();
+                    }
+                    if (snapshot.hasError) {
+                      return Container();
+                    }
+                    bool isfav = snapshot.data ?? false;
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: GestureDetector(
+                        onTap: () {
+                          _toggleFavorite(isfav);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+
+                          child: Icon(
+                            isfav ? Icons.favorite : Icons.favorite_border,
+                            size: 16,
+                            color: isfav ? Colors.black : Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.share, size: 16, color: Colors.grey[600]),
+                  onPressed: () => _shareItem(),
+                ),
+              ],
+            ),
 
             // Listing Info
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.only(left: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -109,6 +263,33 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
                   ),
                   SizedBox(height: 8),
 
+                  // Category and Art tag
+                  _buildCategorySection(),
+                  if (_isPopular()) SizedBox(height: 8),
+                  if (_isPopular())
+                    Container(
+                      // margin: EdgeInsets.only(left: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF2B342),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Color(0xFFF2B342)),
+                      ),
+                      child: Text(
+                        'Popular',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  SizedBox(height: 8),
+
+                  // Price
+                  _buildPriceSection(),
+                  SizedBox(height: 16),
+
                   // Description
                   if (widget.listing.cleanContent.isNotEmpty) ...[
                     Text(
@@ -122,35 +303,24 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
                     SizedBox(height: 16),
                   ],
 
-                  // Price (for items)
-                  if (widget.listing.isItem &&
-                      widget.listing.priceAsDouble != null) ...[
-                    Text(
-                      '\$${widget.listing.priceAsDouble!.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFF2B342),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-
-                  // Status indicators
-                  _buildStatusSection(),
-
-                  SizedBox(height: 20),
-
                   // Location Section
-                  if (widget.listing.address != null &&
-                      widget.listing.address!.isNotEmpty)
-                    _buildLocationSection(),
+                  if (_getAddress().isNotEmpty) _buildLocationSection(),
+                  SizedBox(height: 16),
 
-                  SizedBox(height: 20),
+                  // Shipping Info Section
+                  _buildShippingInfoSection(),
+                  SizedBox(height: 16),
+
+                  // Dynamic Meta Information Section
+                  _buildMetaInfoSection(),
+                  SizedBox(height: 16),
 
                   // Contact Information Section
                   _buildContactInfoSection(),
+                  SizedBox(height: 20),
 
+                  // Payment Options Section
+                  _buildPaymentOptionsSection(),
                   SizedBox(height: 32),
 
                   // Contact Button
@@ -176,8 +346,10 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
     );
   }
 
-  Widget _buildMediaGallery() {
+  Widget _buildEnhancedMediaGallery() {
     final images = widget.listing?.images ?? [];
+
+    final hasMultipleImages = images.length > 1;
 
     return Container(
       height: 300,
@@ -192,7 +364,13 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: PageView.builder(
+              controller: _pageController,
               itemCount: images.isNotEmpty ? images.length : 1,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentImageIndex = index;
+                });
+              },
               itemBuilder: (context, index) {
                 final imageUrl =
                     images.isNotEmpty
@@ -208,133 +386,152 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: Icon(Icons.image_not_supported, size: 50),
+                      );
+                    },
                   ),
                 );
               },
             ),
           ),
 
-          // Page Indicator
-          // if (images.length > 1)
-          //   Positioned(
-          //     bottom: 12,
-          //     left: 0,
-          //     right: 0,
-          //     child: Row(
-          //       mainAxisAlignment: MainAxisAlignment.center,
-          //       children: List.generate(images.length, (index) {
-          //         return Obx(() => Container(
-          //               margin: const EdgeInsets.symmetric(horizontal: 3),
-          //               width: currentPage.value == index ? 10 : 6,
-          //               height: currentPage.value == index ? 10 : 6,
-          //               decoration: BoxDecoration(
-          //                 color: currentPage.value == index
-          //                     ? Colors.white
-          //                     : Colors.white54,
-          //                 shape: BoxShape.circle,
-          //               ),
-          //             ));
-          //       }),
-          //     ),
-          //   ),
-
-          // Listing type badge
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getListingTypeColor(),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                widget.listing?.listingType?.toUpperCase() ?? "",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+          // Navigation buttons (only show when multiple images)
+          if (hasMultipleImages) ...[
+            // Previous button
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    onPressed:
+                        _currentImageIndex > 0
+                            ? () {
+                              _pageController.previousPage(
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                            : null,
+                  ),
                 ),
               ),
             ),
-          ),
+
+            // Next button
+            Positioned(
+              right: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    onPressed:
+                        _currentImageIndex < images.length - 1
+                            ? () {
+                              _pageController.nextPage(
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                            : null,
+                  ),
+                ),
+              ),
+            ),
+
+            // Image indicator dots
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children:
+                    images.asMap().entries.map((entry) {
+                      return Container(
+                        width: 8,
+                        height: 8,
+                        margin: EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              _currentImageIndex == entry.key
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.5),
+                        ),
+                      );
+                    }).toList(),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatusSection() {
-    List<Widget> statusWidgets = [];
-
-    // Featured status
-    if (widget.listing.featured == '1') {
-      statusWidgets.add(
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Color(0xFFF2B342).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Color(0xFFF2B342)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.star, color: Color(0xFFF2B342), size: 14),
-              SizedBox(width: 4),
-              Text(
-                'Featured',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFFF2B342),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Listing type
-    statusWidgets.add(
-      Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: _getListingTypeColor().withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _getListingTypeColor()),
-        ),
-        child: Text(
-          widget.listing.listingType,
+  Widget _buildCategorySection() {
+    return Row(
+      children: [
+        Icon(Icons.local_offer, color: Color(0xFFF2B342), size: 16),
+        SizedBox(width: 4),
+        Text(
+          getCategoryNameById(widget.listing.categories?[0] ?? 0).toString(),
           style: TextStyle(
             fontSize: 12,
+            color: Colors.grey[600],
             fontWeight: FontWeight.w500,
-            color: _getListingTypeColor(),
           ),
         ),
-      ),
-    );
-
-    if (statusWidgets.isEmpty) return SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Status:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-        SizedBox(height: 8),
-        Wrap(spacing: 8.0, runSpacing: 8.0, children: statusWidgets),
       ],
     );
   }
 
-  Widget _buildLocationSection() {
+  Widget _buildPriceSection() {
+    final price = _getPrice();
+    if (price.isEmpty) return SizedBox.shrink();
+
+    return Text(
+      price,
+      style: TextStyle(
+        fontSize: 26,
+        fontFamily: 'poppins',
+        fontWeight: FontWeight.bold,
+        color: Color(0xFFF2B342),
+      ),
+    );
+  }
+
+  Widget _buildShippingInfoSection() {
+    final shippingInfo = _getShippingInfo();
+    if (shippingInfo.isEmpty) return SizedBox.shrink();
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(16),
@@ -347,7 +544,93 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Location',
+            'Shipping Info / Pickup:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            shippingInfo,
+            style: TextStyle(fontSize: 14, color: Colors.black87),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetaInfoSection() {
+    final metaItems = _getDisplayableMetaItems();
+    if (metaItems.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Additional Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 12),
+          ...metaItems.map(
+            (item) => Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${item['label']}: ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item['value'].toString(),
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationSection() {
+    final address = _getAddress();
+    if (address.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Location/City & State:',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -361,7 +644,7 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  widget.listing.address!,
+                  address,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -377,40 +660,8 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
   }
 
   Widget _buildContactInfoSection() {
-    final hasEmail =
-        widget.listing.email != null && widget.listing.email!.isNotEmpty;
-    final hasPhone =
-        widget.listing.phone != null && widget.listing.phone!.isNotEmpty;
-
-    if (!hasEmail && !hasPhone) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300, width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Contact Information',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Contact through the app for more details',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
+    final email = _getEmail();
+    final phone = _getPhone();
 
     return Container(
       width: double.infinity,
@@ -424,27 +675,118 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Contact Information',
+            'Email:',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
-          SizedBox(height: 16),
-          if (hasEmail) ...[
-            _buildContactRow(
-              Icons.email_outlined,
-              'Email:',
-              widget.listing.email!,
+          SizedBox(height: 8),
+          Text(
+            email.isNotEmpty
+                ? email
+                : 'Contact through the app for more details',
+            style: TextStyle(
+              fontSize: 14,
+              color: email.isNotEmpty ? Colors.black87 : Colors.grey[600],
             ),
-            if (hasPhone) SizedBox(height: 12),
+          ),
+          if (phone.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Text(
+              'Phone number:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(phone, style: TextStyle(fontSize: 14, color: Colors.black87)),
           ],
-          if (hasPhone) ...[
-            _buildContactRow(
-              Icons.phone_outlined,
-              'Phone:',
-              widget.listing.phone!,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentOptionsSection() {
+    final paymentOptions = _getPaymentOptions();
+    final venmoAccount = _getVenmoAccount();
+    final cashAppAccount = _getCashAppAccount();
+    final otherPayments = _getOtherPaymentOptions();
+    final preferredContact = _getPreferredContact();
+
+    final hasAnyPaymentInfo =
+        paymentOptions.isNotEmpty ||
+        venmoAccount.isNotEmpty ||
+        cashAppAccount.isNotEmpty ||
+        otherPayments.isNotEmpty ||
+        preferredContact.isNotEmpty;
+
+    if (!hasAnyPaymentInfo) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Payment Options:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 12),
+          if (paymentOptions.isNotEmpty) ...[
+            Text(
+              paymentOptions,
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            SizedBox(height: 8),
+          ],
+          if (venmoAccount.isNotEmpty) ...[
+            Text(
+              'Venmo account number: $venmoAccount',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            SizedBox(height: 8),
+          ],
+          if (cashAppAccount.isNotEmpty) ...[
+            Text(
+              'CashApp account number: $cashAppAccount',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            SizedBox(height: 8),
+          ],
+          if (otherPayments.isNotEmpty) ...[
+            Text(
+              'Other Payment Options: $otherPayments',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            SizedBox(height: 8),
+          ],
+          if (preferredContact.isNotEmpty) ...[
+            Text(
+              'Preferred Method of Contact:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              preferredContact,
+              style: TextStyle(fontSize: 14, color: Colors.black87),
             ),
           ],
         ],
@@ -452,46 +794,104 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
     );
   }
 
-  Widget _buildContactRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: Color(0xFFF2B342), size: 18),
-        SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-      ],
-    );
+  // Helper methods to extract data from meta
+  String _getPrice() {
+    final price = metaData['_price']?.first ?? widget.listing.price ?? '';
+    return price.isNotEmpty ? '\$$price' : '';
   }
 
-  Color _getListingTypeColor() {
-    switch (widget.listing.listingType.toLowerCase()) {
-      case 'item':
-        return const Color(0xFFF2B342);
-      case 'business':
-        return Colors.blue;
-      case 'event':
-        return Colors.tealAccent;
-      default:
-        return Colors.grey;
+  String _getAddress() {
+    return metaData['_address']?.first ?? widget.listing.address ?? '';
+  }
+
+  String _getEmail() {
+    return metaData['_email']?.first ?? widget.listing.email ?? '';
+  }
+
+  String _getPhone() {
+    return metaData['_phone']?.first ??
+        metaData['_custom-text-3']?.first ??
+        widget.listing.phone ??
+        '';
+  }
+
+  String _getShippingInfo() {
+    return metaData['_custom-textarea']?.first ?? '';
+  }
+
+  String _getPaymentOptions() {
+    List<String> paymentOptions = [];
+    // Check for venmo-specific fields in meta data
+    String venmoField = metaData['_custom-textarea']?.first ?? '';
+
+    // If no specific field, you might need to parse from a general payment field
+    // or return empty if not available
+    if (venmoField.isNotEmpty) {
+      paymentOptions.add('Venmo');
     }
+
+    // Check for cashapp-specific fields in meta data
+    String cashAppField = metaData['_custom-text-7']?.first ?? '';
+    if (cashAppField.isNotEmpty) {
+      paymentOptions.add('CashApp');
+    }
+
+    return paymentOptions.join(', ');
+  }
+
+  String _getVenmoAccount() {
+    // Check for venmo-specific fields in meta data
+    final venmoField = metaData['_custom-textarea']?.first ?? '';
+
+    // If no specific field, you might need to parse from a general payment field
+    // or return empty if not available
+    return venmoField;
+  }
+
+  String _getCashAppAccount() {
+    // Check for cashapp-specific fields in meta data
+    final cashAppField = metaData['_custom-text-7']?.first ?? '';
+
+    return cashAppField;
+  }
+
+  String _getOtherPaymentOptions() {
+    // Check for other payment methods field
+    final otherPayments =
+        metaData['_custom-text']?.first ??
+        metaData['_other_payments']?.first ??
+        metaData['_custom-other-payments']?.first ??
+        '';
+
+    return otherPayments;
+  }
+
+  String _getPreferredContact() {
+    final contactData = metaData['_custom-checkbox-3']?.first ?? '';
+    if (contactData.isNotEmpty) {
+      // Parse serialized array data - this extracts contact methods like Text, Call, Email
+      List<String> methods = [];
+      if (contactData.contains('Text')) methods.add('Text');
+      if (contactData.contains('Call')) methods.add('Call');
+      if (contactData.contains('Email')) methods.add('Email');
+      return methods.join(', ');
+    }
+    return '';
+  }
+
+  List<Map<String, String>> _getDisplayableMetaItems() {
+    List<Map<String, String>> items = [];
+
+    // Size information
+    final size = metaData['_custom-text-2']?.first ?? '';
+    if (size.isNotEmpty) {
+      items.add({'label': 'Size', 'value': size});
+    }
+
+    // Add other relevant meta fields as needed
+    // You can extend this based on your specific meta fields
+
+    return items;
   }
 
   String _getContactButtonText() {
@@ -546,7 +946,7 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
         otherUserId: otherUserId,
         productId: widget.listing.id?.toString(),
         productTitle: widget.listing.title,
-        productImage: null, // Will need to implement image extraction
+        productImage: null,
       );
 
       Get.back();
@@ -661,7 +1061,6 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
   }
 
   Future<void> _addListing(UnifiedListing listing) async {
-    print('object');
     try {
       final currentUser = Get.find<AuthService>().currentUser;
       if (currentUser != null) {
@@ -862,28 +1261,28 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
                 ),
 
                 // Listing type badge
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getListingTypeColor(listing.listingType),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      listing.listingType.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   top: 8,
+                //   left: 8,
+                //   child: Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 8,
+                //       vertical: 4,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       color: _getListingTypeColor(listing.listingType),
+                //       borderRadius: BorderRadius.circular(12),
+                //     ),
+                //     child: Text(
+                //       listing.listingType.toUpperCase(),
+                //       style: const TextStyle(
+                //         color: Colors.white,
+                //         fontSize: 10,
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   ),
+                // ),
 
                 // Featured badge
                 if (listing.featured == '1')
@@ -943,7 +1342,8 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+
+                  const SizedBox(height: 2),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -956,38 +1356,53 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFFF2B342),
                           ),
-                        )
-                      else if (listing.isItem)
-                        const Text(
-                          'Price not set',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        )
-                      // Show location for all types
-                      else if (listing.address != null &&
-                          listing.address!.isNotEmpty)
-                        Text(
-                          listing.address!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      else
-                        Text(
-                          'View details',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
                         ),
+                      Text(
+                        listing.meta != null &&
+                                listing.meta!['_custom-text-2'] != null &&
+                                (listing.meta!['_custom-text-2'] as List)
+                                    .isNotEmpty
+                            ? (listing.meta!['_custom-text-2'] as List).first
+                                .toString()
+                            : '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+
+                      // else if (listing.isItem)
+                      //   const Text(
+                      //     'Price not set',
+                      //     style: TextStyle(
+                      //       fontSize: 12,
+                      //       color: Colors.grey,
+                      //       fontStyle: FontStyle.italic,
+                      //     ),
+                      //   )
+                      // // Show location for all types
+                      // else if (listing.address != null &&
+                      //     listing.address!.isNotEmpty)
+                      //   Text(
+                      //     listing.address!,
+                      //     style: TextStyle(
+                      //       fontSize: 12,
+                      //       color: Colors.grey[600],
+                      //       fontStyle: FontStyle.italic,
+                      //     ),
+                      //     maxLines: 2,
+                      //     overflow: TextOverflow.ellipsis,
+                      //   )
+                      // else
+                      //   Text(
+                      //     'View details',
+                      //     style: TextStyle(
+                      //       fontSize: 12,
+                      //       color: Colors.grey[600],
+                      //       fontStyle: FontStyle.italic,
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ],

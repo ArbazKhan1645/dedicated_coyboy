@@ -4,7 +4,7 @@ class TermsConditionsScreen extends StatelessWidget {
   const TermsConditionsScreen({Key? key}) : super(key: key);
 
   static const Color themeColor = Color(0xFFF2B342);
-  static const Color darkBrown =  Colors.black;
+  static const Color darkBrown = Colors.black;
   static const Color lightBrown = Colors.black;
 
   @override
@@ -50,8 +50,6 @@ class TermsConditionsScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.description_rounded, size: 48, color: themeColor),
-                  const SizedBox(height: 16),
                   const Text(
                     'Dedicated Cowboy',
                     style: TextStyle(
@@ -60,34 +58,24 @@ class TermsConditionsScreen extends StatelessWidget {
                       color: darkBrown,
                     ),
                   ),
+
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Effective Date: July 26, 2025',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: darkBrown,
-                      ),
-                    ),
+                  const Text(
+                    'Terms & Conditions',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
+
                   const SizedBox(height: 16),
                   const Text(
-                    'Please read these Terms and Conditions carefully before using our Service. By accessing our platform, you agree to be bound by these terms.',
+                    'Please read these Terms and Conditions (“Terms”) carefully before using the Dedicated Cowboy website or app (the “Service”) operated by Dedicated Cowboy (“us”, “we”, or “our”). These Terms govern your access to and use of the Service, whether as a visitor, individual user, or business user',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: lightBrown,
-                      height: 1.5,
-                    ),
+                    style: TextStyle(fontSize: 12, color: lightBrown),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'By accessing or using any part of the Service, you agree to be bound by these Terms and our Privacy Policy. If you do not agree, please do not use the Service',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: lightBrown),
                   ),
                 ],
               ),
