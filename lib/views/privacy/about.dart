@@ -4,15 +4,16 @@ class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({Key? key}) : super(key: key);
 
   static const Color themeColor = Color(0xFFF2B342);
-  static const Color darkBrown = Colors.black;
-  static const Color lightBrown = Colors.black;
+  static const Color primaryText = Color(0xFF2C3E50);
+  static const Color secondaryText = Color(0xFF5D6D7E);
+  static const Color backgroundColor = Color(0xFFFAFAFA);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAF5),
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -23,216 +24,253 @@ class AboutUsScreen extends StatelessWidget {
           style: TextStyle(
             color: Colors.black,
             fontSize: 18,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Section
+            // Main Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    themeColor.withOpacity(0.15),
-                    themeColor.withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: themeColor.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'About Dedicated Cowboy',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: darkBrown,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'About Dedicated Cowboy',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: primaryText,
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'Discover the journey behind Dedicated Cowboy and our mission to serve the western community',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: lightBrown),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: secondaryText,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 32),
-
-            // Founder Section
+            // About Sections
             Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 2,
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
+              color: Colors.white,
               child: Column(
                 children: [
-                  // Founder Header
+                  const Divider(height: 1, color: Color(0xFFE5E5E5)),
+
+                  // Founder Section
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.08),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Column(
+                        const Text(
+                          'From Founder & CEO',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: primaryText,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Founder info and image
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'From Founder & CEO',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: lightBrown,
-                                fontWeight: FontWeight.w500,
+                            // Founder image
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: themeColor.withOpacity(0.3),
+                                  width: 2,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(40),
+                                child: Image.network(
+                                  'https://dedicatedcowboy.com/wp-content/uploads/2024/04/Screenshot-2024-04-03-at-1.47.54-PM-935x1024.png',
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        color: themeColor.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.person,
+                                        color: themeColor,
+                                        size: 40,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                            Text(
-                              'Chelle Allen',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: darkBrown,
+                            const SizedBox(width: 16),
+
+                            // Founder name and title
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Chelle Allen',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryText,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Founder & CEO',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: secondaryText,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  // Founder Content
-                  Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        // Founder Image Placeholder
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: themeColor.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: themeColor.withOpacity(0.3),
-                              width: 3,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 2,
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(60),
-                            child: Image.network(
-                              'https://dedicatedcowboy.com/wp-content/uploads/2024/04/Screenshot-2024-04-03-at-1.47.54-PM-935x1024.png',
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-
-                          // Replace this container with:
-                        ),
 
                         const SizedBox(height: 24),
 
-                        // Founder Story
+                        // Founder story
                         const Text(
                           'I faced the challenging decision of what to wear to my father-in-law\'s Hall of Fame induction, as my reliable Double D had become vintage. After searching through various online platforms like Ebay, PoshMark, and Etsy, as well as cute boutiques, I realized there was no single site that catered to all things western. This realization led to the creation of Dedicated Cowboy.',
-                          style: TextStyle(fontSize: 14),
-                          textAlign: TextAlign.justify,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryText,
+                            height: 1.5,
+                          ),
                         ),
-
-                        const SizedBox(height: 20),
-
+                        const SizedBox(height: 16),
                         const Text(
                           'Countless prayers, hours of hard work, and numerous conversations have gone into bringing Dedicated Cowboy to life. We are still in the early stages, but our goal is to serve the entire western community by providing a platform for buying, selling, promoting, and offering ranch-related services and products.',
-                          style: TextStyle(fontSize: 14),
-                          textAlign: TextAlign.justify,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryText,
+                            height: 1.5,
+                          ),
                         ),
-
-                        const SizedBox(height: 20),
-
+                        const SizedBox(height: 16),
                         const Text(
                           'I firmly believe that Dedicated Cowboy will have a significant impact on the western world, offering an economical, user-friendly, simple, and enjoyable experience. Thank you for being a part of Dedicated Cowboy.',
-                          style: TextStyle(fontSize: 14),
-                          textAlign: TextAlign.justify,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryText,
+                            height: 1.5,
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
 
-                        const SizedBox(height: 24),
+                  // Mission Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Our Mission',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: primaryText,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'To serve the entire western community by providing a comprehensive platform for buying, selling, promoting, and offering ranch-related services and products.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryText,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                        // Signature
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: themeColor.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: themeColor.withOpacity(0.2),
-                              width: 1,
-                            ),
+                  // Values Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Our Values',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: primaryText,
+                            letterSpacing: -0.2,
                           ),
-                          child: Row(
-                            children: [
-                              const Text(
-                                'Chelle Allen',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: darkBrown,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Text(
-                                'Founder & CEO',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: lightBrown,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildValueItem(
+                          'Economical',
+                          'Affordable solutions for the western community',
+                        ),
+                        _buildValueItem(
+                          'User-Friendly',
+                          'Simple and intuitive platform design',
+                        ),
+                        _buildValueItem(
+                          'Simple',
+                          'Easy-to-use interface for all users',
+                        ),
+                        _buildValueItem(
+                          'Enjoyable',
+                          'Making western commerce fun and engaging',
                         ),
                       ],
                     ),
@@ -241,114 +279,10 @@ class AboutUsScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 32),
-
-            // Mission Section
+            // Thank you message and footer
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.08),
-                    spreadRadius: 1,
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.flag_rounded, color: themeColor, size: 28),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Our Mission',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: darkBrown,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'To serve the entire western community by providing a comprehensive platform for buying, selling, promoting, and offering ranch-related services and products.',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Values Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.08),
-                    spreadRadius: 1,
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded, color: themeColor, size: 28),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Our Values',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: darkBrown,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildValueItem(
-                    Icons.monetization_on_rounded,
-                    'Economical',
-                    'Affordable solutions for the western community',
-                  ),
-                  _buildValueItem(
-                    Icons.phone_android_rounded,
-                    'User-Friendly',
-                    'Simple and intuitive platform design',
-                  ),
-                  _buildValueItem(
-                    Icons.lightbulb_rounded,
-                    'Simple',
-                    'Easy-to-use interface for all users',
-                  ),
-                  _buildValueItem(
-                    Icons.sentiment_very_satisfied_rounded,
-                    'Enjoyable',
-                    'Making western commerce fun and engaging',
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Footer
-            Center(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
               child: Column(
                 children: [
                   Container(
@@ -367,51 +301,51 @@ class AboutUsScreen extends StatelessWidget {
                     child: const Text(
                       'Thank you for being part of our journey',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: darkBrown,
+                        color: primaryText,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Text(
                     '© 2025 Dedicated Cowboy. All rights reserved.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildValueItem(IconData icon, String title, String description) {
+  Widget _buildValueItem(String title, String description) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: primaryText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 14,
+              color: secondaryText,
+              height: 1.3,
             ),
           ),
         ],
