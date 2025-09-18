@@ -20,8 +20,8 @@ class SignUpController extends GetxController {
 
   // Loading and UI states
   final isLoading = false.obs;
-    final agreePrivacy = false.obs;
-      final agreeTerms = false.obs;
+  final agreePrivacy = false.obs;
+  final agreeTerms = false.obs;
   final isPasswordVisible = false.obs;
   final isConfirmPasswordVisible = false.obs;
 
@@ -80,9 +80,17 @@ class SignUpController extends GetxController {
     clearErrors();
 
     String? firstError;
+    final usernameValidation = AuthValidator.validateUsernameOrEmail(
+      usernameController.value.text,
+      false,
+    );
+    if (usernameValidation != null) {
+      firstError ??= usernameValidation;
+    }
 
     final emailValidation = AuthValidator.validateUsernameOrEmail(
       emailController.value.text,
+      true,
     );
     if (emailValidation != null) {
       emailError.value = emailValidation;
@@ -122,6 +130,11 @@ class SignUpController extends GetxController {
         return;
       }
 
+      if (agreePrivacy.value == false || agreeTerms.value == false) {
+        _showError('Please accept our terms and conditions.');
+        return;
+      }
+
       // Start loading
       isLoading.value = true;
 
@@ -129,7 +142,12 @@ class SignUpController extends GetxController {
       final password = passwordController.value.text;
 
       // Attempt to sign up
-      final user = await _authService.signUp(email: email, password: password);
+      final user = await _authService.signUp(
+        email: email,
+        password: password,
+        displayName: usernameController.value.text,
+        facebookPageId: facebookpageIdController.value.text,
+      );
 
       // Set onboarding as seen
       final prefs = await SharedPreferences.getInstance();
@@ -217,11 +235,11 @@ class SignUpController extends GetxController {
   void _showError(String message) {
     generalError.value = message;
     Get.snackbar(
-      'Error',
+      'Validation',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
+      backgroundColor: Color(0xFFF2B342),
+      colorText: Colors.black,
       duration: const Duration(seconds: 4),
       icon: const Icon(Icons.error, color: Colors.white),
     );
@@ -282,7 +300,10 @@ class SignUpController extends GetxController {
   Future<void> _sendPasswordResetEmail(String email, RxBool isLoading) async {
     try {
       // Validate email
-      final emailValidation = AuthValidator.validateUsernameOrEmail(email);
+      final emailValidation = AuthValidator.validateUsernameOrEmail(
+        email,
+        true,
+      );
       if (emailValidation != null) {
         Get.snackbar(
           'Error',

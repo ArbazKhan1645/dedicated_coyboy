@@ -68,6 +68,7 @@ class _SignInViewState extends State<SignInView>
     return Scaffold(
       backgroundColor: appColors.pYellow,
       appBar: AppBar(
+        leading: Container(),
         forceMaterialTransparency: true,
         backgroundColor: appColors.transparent,
         automaticallyImplyLeading: true,
@@ -78,7 +79,7 @@ class _SignInViewState extends State<SignInView>
             padding: const EdgeInsets.all(10.0),
             child: GestureDetector(
               onTap: () {
-                Get.off(() => SignUpView());
+                Get.offAll(() => SignUpView());
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(

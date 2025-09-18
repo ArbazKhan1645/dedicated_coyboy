@@ -100,6 +100,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 widget.labelText,
                 style: Appthemes.textSmall.copyWith(
                   fontFamily: 'popins-bold',
+                  fontSize: 13.5.sp,
                   color: widget.labelColor,
                 ),
               ),

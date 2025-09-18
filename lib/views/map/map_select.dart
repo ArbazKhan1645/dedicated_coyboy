@@ -170,10 +170,13 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [  
+        children: [
           Text(
             'Location/City & State',
-            style: Appthemes.textSmall.copyWith(fontFamily: 'popins-bold', color: Color(0xFF424242)),
+            style: Appthemes.textSmall.copyWith(
+              fontFamily: 'popins-bold',
+              color: Color(0xFF424242),
+            ),
           ),
           SizedBox(height: 10),
           // Content area
@@ -194,12 +197,13 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.grey.shade50, Colors.grey.shade100],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white,
+                      // gradient: LinearGradient(
+                      //   colors: [Colors.grey.shade50, Colors.grey.shade100],
+                      //   begin: Alignment.topLeft,
+                      //   end: Alignment.bottomRight,
+                      // ),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color:
                             _selectedLocation != null
@@ -217,25 +221,6 @@ class _LocationMapWidgetState extends State<LocationMapWidget>
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color:
-                                _selectedLocation != null
-                                    ? const Color(0xFFF2B342)
-                                    : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.search,
-                            color:
-                                _selectedLocation != null
-                                    ? Colors.white
-                                    : Colors.grey.shade600,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

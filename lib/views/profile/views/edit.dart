@@ -348,92 +348,92 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
           ),
 
           // Billing Information Section (if user has subscription)
-          Obx(() {
-            if (controller.isActiveSubscription.value) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('Billing Information'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'First Name',
-                          controller: controller.billingFirstNameController,
-                          hintText: 'Billing first name',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'Last Name',
-                          controller: controller.billingLastNameController,
-                          hintText: 'Billing last name',
-                        ),
-                      ),
-                    ],
-                  ),
-                  _buildFormField(
-                    label: 'Billing Email',
-                    controller: controller.billingEmailController,
-                    hintText: 'billing@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  _buildFormField(
-                    label: 'Phone',
-                    controller: controller.billingPhoneController,
-                    hintText: 'Enter billing phone number',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  _buildFormField(
-                    label: 'Address',
-                    controller: controller.billingAddressController,
-                    hintText: 'Enter billing address',
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'City',
-                          controller: controller.billingCityController,
-                          hintText: 'City',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'Postcode',
-                          controller: controller.billingPostcodeController,
-                          hintText: 'Postcode',
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'Country',
-                          controller: controller.billingCountryController,
-                          hintText: 'Country',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildFormField(
-                          label: 'State',
-                          controller: controller.billingStateController,
-                          hintText: 'State',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          }),
+          // Obx(() {
+          //   if (controller.isActiveSubscription.value) {
+          //     return Column(
+          //       crossAxisAlignment: CrossAxisAlignment.start,
+          //       children: [
+          //         const SizedBox(height: 16),
+          //         _buildSectionTitle('Billing Information'),
+          //         Row(
+          //           children: [
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'First Name',
+          //                 controller: controller.billingFirstNameController,
+          //                 hintText: 'Billing first name',
+          //               ),
+          //             ),
+          //             const SizedBox(width: 12),
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'Last Name',
+          //                 controller: controller.billingLastNameController,
+          //                 hintText: 'Billing last name',
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //         _buildFormField(
+          //           label: 'Billing Email',
+          //           controller: controller.billingEmailController,
+          //           hintText: 'billing@example.com',
+          //           keyboardType: TextInputType.emailAddress,
+          //         ),
+          //         _buildFormField(
+          //           label: 'Phone',
+          //           controller: controller.billingPhoneController,
+          //           hintText: 'Enter billing phone number',
+          //           keyboardType: TextInputType.phone,
+          //         ),
+          //         _buildFormField(
+          //           label: 'Address',
+          //           controller: controller.billingAddressController,
+          //           hintText: 'Enter billing address',
+          //         ),
+          //         Row(
+          //           children: [
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'City',
+          //                 controller: controller.billingCityController,
+          //                 hintText: 'City',
+          //               ),
+          //             ),
+          //             const SizedBox(width: 12),
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'Postcode',
+          //                 controller: controller.billingPostcodeController,
+          //                 hintText: 'Postcode',
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //         Row(
+          //           children: [
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'Country',
+          //                 controller: controller.billingCountryController,
+          //                 hintText: 'Country',
+          //               ),
+          //             ),
+          //             const SizedBox(width: 12),
+          //             Expanded(
+          //               child: _buildFormField(
+          //                 label: 'State',
+          //                 controller: controller.billingStateController,
+          //                 hintText: 'State',
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //       ],
+          //     );
+          //   }
+          //   return const SizedBox.shrink();
+          // }),
 
           // Account Information
           const SizedBox(height: 16),

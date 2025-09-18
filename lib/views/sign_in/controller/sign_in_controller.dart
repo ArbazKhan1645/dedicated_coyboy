@@ -99,7 +99,7 @@ class SignInController extends GetxController {
 
   // Validate form inputs
   String? validateEmail(String? email) {
-    return AuthValidator.validateUsernameOrEmail(email);
+    return AuthValidator.validateUsernameOrEmail(email, true);
   }
 
   String? validatePassword(String? password) {

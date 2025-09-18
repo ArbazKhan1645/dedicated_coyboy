@@ -55,17 +55,12 @@ class AboutUsScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.auto_stories_rounded,
-                        size: 32,
-                        color: themeColor,
-                      ),
-                      const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
-                          'Our Story',
+                          'About Dedicated Cowboy',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: darkBrown,
                           ),

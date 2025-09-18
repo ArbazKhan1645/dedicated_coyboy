@@ -117,6 +117,8 @@ class AuthService extends GetxService {
   Future<ApiUserModel> signUp({
     required String email,
     required String password,
+        required String displayName,
+    required String facebookPageId,
   }) async {
     _validateEmail(email);
     _validatePassword(password);
@@ -126,6 +128,8 @@ class AuthService extends GetxService {
       final signUpResponse = await ApiClient.signUp(
         email: email,
         password: password,
+        displayName: displayName,
+        facebookPageId: facebookPageId,
       );
 
       if (!signUpResponse.success) {
@@ -424,9 +428,9 @@ class AuthService extends GetxService {
 
 // Enhanced AuthValidator for REST API
 class AuthValidator {
-  static String? validateUsernameOrEmail(String? val) {
+  static String? validateUsernameOrEmail(String? val , bool isEmail) {
     if (val == null || val.trim().isEmpty) {
-      return 'Value is required';
+      return '${isEmail? 'Email' : 'Username'} is required';
     }
 
     final value = val.trim();

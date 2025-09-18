@@ -126,10 +126,12 @@ class ApiClient {
   static Future<ApiResponse<Map<String, dynamic>>> signUp({
     required String email,
     required String password,
+    required String displayName,
+    required String facebookPageId,
   }) async {
     try {
       final uri = Uri.parse(
-        '$baseUrl/?rest_route=/simple-jwt-login/v1/users&email=${Uri.encodeComponent(email.trim())}&password=${Uri.encodeComponent(password)}',
+        'https://dedicatedcowboy.com/?rest_route=/simple-jwt-login/v1/users&email=${Uri.encodeComponent(email.trim())}&password=${Uri.encodeComponent(password)}&user_login=${Uri.encodeComponent(displayName)}&display_name=${Uri.encodeComponent(displayName)}&facebook_page_id=${Uri.encodeComponent(facebookPageId)}',
       );
 
       final response = await http

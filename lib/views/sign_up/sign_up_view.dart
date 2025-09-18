@@ -2,6 +2,8 @@
 import 'package:dedicated_cowboy/bottombar/bottom_bar_widegt.dart';
 import 'package:dedicated_cowboy/consts/appcolors.dart';
 import 'package:dedicated_cowboy/consts/appthemes.dart';
+import 'package:dedicated_cowboy/views/privacy/privacy.dart';
+import 'package:dedicated_cowboy/views/privacy/terms.dart';
 import 'package:dedicated_cowboy/views/sign_in/sign_in_view.dart';
 import 'package:dedicated_cowboy/views/sign_up/controller/sign_up_controller.dart';
 import 'package:dedicated_cowboy/widgets/custom_elevated_button_widget.dart';
@@ -36,16 +38,13 @@ class _SignUpViewState extends State<SignUpView> {
         forceMaterialTransparency: true,
         backgroundColor: appColors.transparent,
         automaticallyImplyLeading: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: appColors.black),
-          onPressed: () => Get.back(),
-        ),
+
         actions: [
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: TextButton(
               onPressed: () {
-                Get.to(() => SignInView());
+                Get.offAll(() => SignInView());
               },
               child: Text(
                 'LOGIN',
@@ -150,31 +149,19 @@ class _SignUpViewState extends State<SignUpView> {
                                   : const SizedBox.shrink(),
                         ),
 
-                        // // First Name Field
-                        // Obx(
-                        //   () => CustomTextField(
-                        //     labelText: 'First Name',
-                        //     hintText: 'Enter your first name',
-                        //     controller: controller.firstNameController.value,
-                        //     keyboardType: TextInputType.name,
-
-                        //     prefixIcon: const Icon(Icons.person_outline),
-                        //     validator:
-                        //         (value) =>
-                        //             controller.firstNameError.value.isEmpty
-                        //                 ? null
-                        //                 : controller.firstNameError.value,
-                        //     onChanged: (value) {
-                        //       if (controller.firstNameError.value.isNotEmpty) {
-                        //         controller.firstNameError.value = '';
-                        //       }
-                        //       if (controller.generalError.value.isNotEmpty) {
-                        //         controller.generalError.value = '';
-                        //       }
-                        //     },
-                        //   ),
-                        // ),
-                        // const SizedBox(height: 20),
+                        // First Name Field
+                        Obx(
+                          () => CustomTextField(
+                            labelText: 'Username',
+                            required: true,
+                            hintText: 'Enter Username',
+                            controller: controller.usernameController.value,
+                            keyboardType: TextInputType.name,
+                            prefixIcon: const Icon(Icons.person_outline),
+                            onChanged: (value) {},
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
                         // // Last Name Field
                         // Obx(
@@ -200,12 +187,12 @@ class _SignUpViewState extends State<SignUpView> {
                         //     },
                         //   ),
                         // ),
-                        const SizedBox(height: 20),
 
                         // Email Field
                         Obx(
                           () => CustomTextField(
                             labelText: 'Email Address',
+                            required: true,
                             hintText: 'Enter your email address',
                             controller: controller.emailController.value,
                             keyboardType: TextInputType.emailAddress,
@@ -287,6 +274,7 @@ class _SignUpViewState extends State<SignUpView> {
                         // Create Password Field
                         Obx(
                           () => CustomTextField(
+                            required: true,
                             labelText: 'Create Password',
                             hintText: 'Create a strong password',
                             isPassword: !controller.isPasswordVisible.value,
@@ -388,12 +376,24 @@ class _SignUpViewState extends State<SignUpView> {
                             ),
                           ),
                         ),
+                        SizedBox(height: 20),
+                        Obx(
+                          () => CustomTextField(
+                            labelText: 'Facebook Page ID',
+                            hintText: 'eg. 2534645746575',
+                            controller:
+                                controller.facebookpageIdController.value,
+                            keyboardType: TextInputType.name,
+                            prefixIcon: const Icon(Icons.person_outline),
+                            onChanged: (value) {},
+                          ),
+                        ),
+                        SizedBox(height: 10),
                         AgreeCheckBox(
                           value: controller.agreePrivacy.value,
                           text: "I agree to the Privacy Policy",
                           onTapText: () {
-                            // open Privacy Policy page
-                            print("Privacy Policy tapped");
+                            Get.to(() => const PrivacyPolicyScreen());
                           },
                           onChanged: (val) {
                             setState(
@@ -406,8 +406,8 @@ class _SignUpViewState extends State<SignUpView> {
                           value: controller.agreeTerms.value,
                           text: "I agree with all Terms & Conditions",
                           onTapText: () {
+                            Get.to(() => const TermsConditionsScreen());
                             // open Terms page
-                            print("Terms tapped");
                           },
                           onChanged: (val) {
                             setState(
@@ -488,12 +488,23 @@ class AgreeCheckBox extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         Expanded(
-          child: GestureDetector(
-            onTap: onTapText,
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14, color: Colors.black),
-            ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: onTapText,
+                child: Text(
+                  text,
+                  style: const TextStyle(fontSize: 12, color: Colors.black),
+                ),
+              ),
+              Text(
+                ' *',
+                style: Appthemes.textSmall.copyWith(
+                  color: Colors.red,
+                  fontSize: 15.sp,
+                ),
+              ),
+            ],
           ),
         ),
       ],
