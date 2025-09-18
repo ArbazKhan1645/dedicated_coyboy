@@ -388,6 +388,33 @@ class _SignUpViewState extends State<SignUpView> {
                             ),
                           ),
                         ),
+                        AgreeCheckBox(
+                          value: controller.agreePrivacy.value,
+                          text: "I agree to the Privacy Policy",
+                          onTapText: () {
+                            // open Privacy Policy page
+                            print("Privacy Policy tapped");
+                          },
+                          onChanged: (val) {
+                            setState(
+                              () =>
+                                  controller.agreePrivacy.value = val ?? false,
+                            );
+                          },
+                        ),
+                        AgreeCheckBox(
+                          value: controller.agreeTerms.value,
+                          text: "I agree with all Terms & Conditions",
+                          onTapText: () {
+                            // open Terms page
+                            print("Terms tapped");
+                          },
+                          onChanged: (val) {
+                            setState(
+                              () => controller.agreeTerms.value = val ?? false,
+                            );
+                          },
+                        ),
                         const SizedBox(height: 30),
 
                         // JOIN Button
@@ -432,6 +459,48 @@ class _SignUpViewState extends State<SignUpView> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class AgreeCheckBox extends StatelessWidget {
+  final bool value;
+  final String text;
+  final VoidCallback onTapText;
+  final ValueChanged<bool?> onChanged;
+
+  const AgreeCheckBox({
+    Key? key,
+    required this.value,
+    required this.text,
+    required this.onTapText,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: onChanged,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+        Expanded(
+          child: GestureDetector(
+            onTap: onTapText,
+            child: Text(
+              text,
+
+              style: const TextStyle(
+                color: Colors.blue, // link style
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

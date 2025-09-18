@@ -12,12 +12,16 @@ class SignUpController extends GetxController {
   final emailController = TextEditingController().obs;
   final passwordController = TextEditingController().obs;
   final confirmPasswordController = TextEditingController().obs;
+  final usernameController = TextEditingController().obs;
+  final facebookpageIdController = TextEditingController().obs;
 
   // Form key for validation
   final formKey = GlobalKey<FormState>();
 
   // Loading and UI states
   final isLoading = false.obs;
+    final agreePrivacy = false.obs;
+      final agreeTerms = false.obs;
   final isPasswordVisible = false.obs;
   final isConfirmPasswordVisible = false.obs;
 
