@@ -480,7 +480,7 @@ class AgreeCheckBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Checkbox(
           value: value,
@@ -492,11 +492,7 @@ class AgreeCheckBox extends StatelessWidget {
             onTap: onTapText,
             child: Text(
               text,
-
-              style: const TextStyle(
-                color: Colors.blue, // link style
-                decoration: TextDecoration.underline,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.black),
             ),
           ),
         ),
