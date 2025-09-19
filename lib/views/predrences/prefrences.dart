@@ -234,21 +234,18 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 height: 48,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(
+                    8,
+                  ), // More rectangular, less rounded
                   color:
                       _isSaving
-                          ? const Color(0xFFFBC65F).withOpacity(0.6)
-                          : const Color(0xFFFBC65F),
-                  boxShadow:
-                      _isSaving
-                          ? []
-                          : [
-                            const BoxShadow(
-                              color: Color(0x40000000),
-                              offset: Offset(0, 4),
-                              blurRadius: 4,
-                            ),
-                          ],
+                          ? const Color(0xFF4A5568).withOpacity(
+                            0.6,
+                          ) // Darker gray when saving
+                          : const Color(
+                            0xFF364C63,
+                          ), // Dark blue-gray background
+                  // Removed box shadow for flatter appearance
                 ),
                 child: Center(
                   child:
@@ -267,7 +264,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                             'Save Changes',
                             style: TextStyle(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600, // Slightly less bold
                               fontSize: 16,
                             ),
                           ),

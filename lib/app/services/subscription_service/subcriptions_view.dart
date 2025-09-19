@@ -464,7 +464,7 @@ class _FinalSubscriptionManagementScreenState
                     child: ElevatedButton(
                       onPressed: isLoading ? null : onContinuePressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF2B342),
+                        backgroundColor: const Color(0xFFF3B340),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -484,7 +484,7 @@ class _FinalSubscriptionManagementScreenState
                               : const Text(
                                 'Continue',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),

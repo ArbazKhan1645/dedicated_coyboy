@@ -1466,19 +1466,27 @@ class _BrowseFilterScreenState extends State<BrowseFilterScreen> {
     return SizedBox(
       width: double.infinity,
       height: 50,
-      child: ElevatedButton(
+      child: OutlinedButton(
         onPressed: _applyFilters,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFFF2B342),
-          foregroundColor: Colors.white,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Color(0xFFF2B342), // Text color matches border
+          backgroundColor: Colors.transparent, // Transparent background
+          side: BorderSide(
+            color: Color(0xFFF2B342), // Orange/yellow border
+            width: 2,
+          ),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(8), // Less rounded corners
           ),
         ),
         child: Text(
-          'Apply Filter',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          'Search Listings',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFF2B342), // Ensure text color matches
+          ),
         ),
       ),
     );
