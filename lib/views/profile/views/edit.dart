@@ -329,20 +329,20 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
             color: const Color(0xff1877F2),
           ),
           _buildSocialField(
-            icon: Icons.camera_alt, // Instagram icon
-            label: 'Instagram',
+            icon: Icons.alternate_email, // Twitter/X icon
+            label: 'Twitter',
             controller: controller.instagramController,
-            color: const Color(0xffE4405F),
+            color: const Color(0xff1DA1F2),
           ),
           _buildSocialField(
-            icon: Icons.work,
+            icon: Icons.business,
             label: 'LinkedIn',
             controller: controller.linkedinController,
             color: const Color(0xff0A66C2),
           ),
           _buildSocialField(
-            icon: Icons.video_library,
-            label: 'YouTube',
+            icon: Icons.play_circle_outline,
+            label: 'Youtube',
             controller: controller.youtubeController,
             color: const Color(0xffFF0000),
           ),
@@ -555,45 +555,49 @@ class _UserProfileEditScreenState extends State<UserProfileEditScreen> {
     required Color color,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'Add your $label URL',
-                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: color, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+          // Platform label with icon
+          Row(
+            children: [
+              Icon(icon, color: Colors.black87, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Input field with underline style
+          TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'Enter your ${label.toLowerCase()} url',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              border: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: color, width: 2),
+              ),
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Leave it empty to hide',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
         ],
       ),
