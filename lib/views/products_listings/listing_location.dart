@@ -16,7 +16,7 @@ class ListingsMapWidget extends StatefulWidget {
     Key? key,
     required this.listings,
     this.onListingTap,
-    this.initialZoom = 12.0,
+    this.initialZoom = 2.0, // Changed to global view zoom level
     this.initialCenter,
   }) : super(key: key);
 
@@ -33,11 +33,11 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
   bool _hasValidListings = false;
   bool _hasUserLocation = false;
 
-  // Default location (fallback if no listings and no user location)
-  static const LatLng _defaultLocation = LatLng(
-    37.7749,
-    -122.4194,
-  ); // San Francisco
+  // Changed to world center for global view
+  static const LatLng _worldCenter = LatLng(
+    20.0, // Centered between major continents
+    0.0, // Prime meridian
+  );
 
   @override
   void initState() {
@@ -47,6 +47,7 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
 
   Future<void> _initializeMap() async {
     try {
+      // Still get user location but don't make it primary
       await _getCurrentLocation();
       _createMarkers();
       setState(() {
@@ -67,18 +68,28 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Location permissions are denied');
+          print(
+            'Location permissions denied - continuing without user location',
+          );
+          _hasUserLocation = false;
+          return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied');
+        print(
+          'Location permissions permanently denied - continuing without user location',
+        );
+        _hasUserLocation = false;
+        return;
       }
 
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are disabled');
+        print('Location services disabled - continuing without user location');
+        _hasUserLocation = false;
+        return;
       }
 
       // Get current position
@@ -90,10 +101,9 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       _currentLocation = LatLng(position.latitude, position.longitude);
       _hasUserLocation = true;
     } catch (e) {
-      print('Error getting location: $e');
+      print('Error getting location: $e - continuing without user location');
       _hasUserLocation = false;
       _currentLocation = null;
-      // Don't set a fallback location here - let the smart centering handle it
     }
   }
 
@@ -105,7 +115,7 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       'Creating markers - hasUserLocation: $_hasUserLocation, currentLocation: $_currentLocation',
     );
 
-    // Add current location marker only if we have user location
+    // Add current location marker (but not as primary focus)
     if (_currentLocation != null && _hasUserLocation) {
       markers.add(
         Marker(
@@ -301,65 +311,6 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                           ),
                         ),
                       ),
-                      // Additional badges
-                      // if (listing.c != null && listing.type == 'Item')
-                      //   Positioned(
-                      //     bottom: 8,
-                      //     left: 8,
-                      //     child: Container(
-                      //       padding: EdgeInsets.symmetric(
-                      //         horizontal: 8,
-                      //         vertical: 4,
-                      //       ),
-                      //       decoration: BoxDecoration(
-                      //         color: Colors.black.withOpacity(0.7),
-                      //         borderRadius: BorderRadius.circular(12),
-                      //       ),
-                      //       child: Text(
-                      //         listing.condition!,
-                      //         style: TextStyle(
-                      //           color: Colors.white,
-                      //           fontSize: 10,
-                      //           fontWeight: FontWeight.w500,
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ),
-                      // if (listing. == true &&
-                      //     listing.type == 'Business')
-                      //   Positioned(
-                      //     bottom: 8,
-                      //     right: 8,
-                      //     child: Container(
-                      //       padding: EdgeInsets.symmetric(
-                      //         horizontal: 6,
-                      //         vertical: 2,
-                      //       ),
-                      //       decoration: BoxDecoration(
-                      //         color: Color(0xFFF2B342),
-                      //         borderRadius: BorderRadius.circular(8),
-                      //       ),
-                      //       child: Row(
-                      //         mainAxisSize: MainAxisSize.min,
-                      //         children: [
-                      //           Icon(
-                      //             Icons.verified,
-                      //             color: Colors.white,
-                      //             size: 10,
-                      //           ),
-                      //           SizedBox(width: 2),
-                      //           Text(
-                      //             'Verified',
-                      //             style: TextStyle(
-                      //               color: Colors.white,
-                      //               fontSize: 8,
-                      //               fontWeight: FontWeight.w500,
-                      //             ),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //     ),
-                      //   ),
                     ],
                   ),
                 ),
@@ -405,25 +356,6 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
                                 color: Color(0xFFF2B342),
                               ),
                             ),
-                          // else if (listing.type == 'Event' &&
-                          //     listing.eventStartDate != null)
-                          //   Text(
-                          //     _formatEventDate(listing.eventStartDate!),
-                          //     style: TextStyle(
-                          //       fontSize: 14,
-                          //       color: Colors.blue[700],
-                          //       fontWeight: FontWeight.w600,
-                          //     ),
-                          //   )
-                          // else if (listing.type == 'Business')
-                          //   Text(
-                          //     'Contact for info',
-                          //     style: TextStyle(
-                          //       fontSize: 14,
-                          //       color: Colors.grey[600],
-                          //       fontStyle: FontStyle.italic,
-                          //     ),
-                          //   ),
                           ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context);
@@ -473,19 +405,20 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     }
   }
 
-  /// Smart map center calculation with improved fallback logic
+  /// Modified map center - prioritizes global view over user location
   LatLng _getMapCenter() {
     // Priority 1: Use explicitly provided initial center
     if (widget.initialCenter != null) {
       return widget.initialCenter!;
     }
 
-    // Priority 2: Use user's current location if available
-    if (_currentLocation != null && _hasUserLocation) {
-      return _currentLocation!;
+    // Priority 2: If we have valid listings, show world center (global view)
+    // This allows users to see all markers worldwide
+    if (_hasValidListings) {
+      return _worldCenter;
     }
 
-    // Priority 3: Use center of all valid listings
+    // Priority 3: Use center of all valid listings (fallback)
     if (_hasValidListings) {
       return _getListingsCenter();
     }
@@ -500,8 +433,8 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       }
     }
 
-    // Final fallback: default location
-    return _defaultLocation;
+    // Final fallback: world center instead of specific location
+    return _worldCenter;
   }
 
   /// Calculate the geographic center of all valid listings
@@ -520,7 +453,7 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     }
 
     if (validListingPositions.isEmpty) {
-      return _defaultLocation;
+      return _worldCenter;
     }
 
     if (validListingPositions.length == 1) {
@@ -542,58 +475,34 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     );
   }
 
-  /// Get appropriate zoom level based on available data
+  /// Modified zoom level for global view
   double _getSmartZoomLevel() {
-    // If we have user location and listings, use default zoom to show local area
-    if (_hasUserLocation && _hasValidListings) {
-      return widget.initialZoom;
-    }
-
-    // If we only have listings, calculate zoom based on their spread
-    if (_hasValidListings) {
-      List<LatLng> validListingPositions = [];
-
-      for (final listing in widget.listings) {
-        if (listing.latitude != null &&
-            listing.longitude != null &&
-            listing.latitude != 0.0 &&
-            listing.longitude != 0.0) {
-          validListingPositions.add(
-            LatLng(listing.latitude!, listing.longitude!),
-          );
-        }
-      }
-
-      if (validListingPositions.length == 1) {
-        return 14.0; // Closer zoom for single listing
-      }
-
-      // For multiple listings, we'll let _fitBoundsToMarkers handle the zoom
-      return widget.initialZoom;
-    }
-
-    return widget.initialZoom;
+    // Always start with global view zoom level
+    return 2.0; // Global zoom level to see the whole world
   }
 
   Future<void> _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
 
-    // Always fit bounds to show all markers if we have any listings
-    if (_hasValidListings || (_hasUserLocation && _currentLocation != null)) {
+    // Optional: Add a button to fit all markers if user wants to see them all at once
+    // But start with global view by default
+    if (_hasValidListings) {
       // Add a small delay to ensure the map is fully loaded
       await Future.delayed(Duration(milliseconds: 500));
+      // Commenting out auto-fit - let user choose to zoom manually
       // _fitBoundsToMarkers();
     }
   }
 
+  // Keep this method for potential "Show All Markers" button functionality
   void _fitBoundsToMarkers() {
     if (_mapController == null || _markers.isEmpty) return;
 
-    // If only one marker (either user location or single listing), just center on it
+    // If only one marker, center on it with moderate zoom
     if (_markers.length == 1) {
       final marker = _markers.first;
       _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(marker.position, _getSmartZoomLevel()),
+        CameraUpdate.newLatLngZoom(marker.position, 10.0),
       );
       return;
     }
@@ -616,22 +525,12 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
     double lngSpan = maxLng - minLng;
 
     // Add adaptive padding based on span
-    double latPadding = math.max(
-      latSpan * 0.2,
-      0.001,
-    ); // 20% padding, min 0.001
-    double lngPadding = math.max(
-      lngSpan * 0.2,
-      0.001,
-    ); // 20% padding, min 0.001
+    double latPadding = math.max(latSpan * 0.2, 0.001);
+    double lngPadding = math.max(lngSpan * 0.2, 0.001);
 
-    // If all markers are very close together, use minimum padding
-    if (latSpan < 0.001) {
-      latPadding = 0.005; // About 500m
-    }
-    if (lngSpan < 0.001) {
-      lngPadding = 0.005; // About 500m
-    }
+    // For global spans, use larger padding
+    if (latSpan > 90) latPadding = latSpan * 0.1; // 10% for very large spans
+    if (lngSpan > 180) lngPadding = lngSpan * 0.1;
 
     try {
       _mapController!.animateCamera(
@@ -645,11 +544,16 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       );
     } catch (e) {
       print('Error fitting bounds: $e');
-      // Fallback to centering on the calculated center with smart zoom
+      // Fallback to world center
       _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(_getMapCenter(), _getSmartZoomLevel()),
+        CameraUpdate.newLatLngZoom(_worldCenter, 2.0),
       );
     }
+  }
+
+  // Add method to show all markers (optional - can be called by a button)
+  void showAllMarkers() {
+    _fitBoundsToMarkers();
   }
 
   @override
@@ -708,23 +612,39 @@ class _ListingsMapWidgetState extends State<ListingsMapWidget> {
       );
     }
 
-    return Container(
-      height: 400,
-      child: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(
-          target: _getMapCenter(),
-          zoom: _getSmartZoomLevel(),
+    return Stack(
+      children: [
+        Container(
+          height: 400,
+          child: GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: CameraPosition(
+              target: _getMapCenter(),
+              zoom: _getSmartZoomLevel(),
+            ),
+            markers: _markers,
+            myLocationEnabled: _hasUserLocation,
+            myLocationButtonEnabled: _hasUserLocation,
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: false,
+            compassEnabled: true,
+            buildingsEnabled: true,
+            mapType: MapType.normal,
+          ),
         ),
-        markers: _markers,
-        myLocationEnabled: _hasUserLocation,
-        myLocationButtonEnabled: _hasUserLocation,
-        zoomControlsEnabled: true,
-        mapToolbarEnabled: false,
-        compassEnabled: true,
-        buildingsEnabled: true,
-        mapType: MapType.normal,
-      ),
+        // Optional: Add a "Show All Markers" button
+        if (_hasValidListings && _markers.length > 1)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: FloatingActionButton.small(
+              onPressed: showAllMarkers,
+              backgroundColor: Color(0xFFF2B342),
+              child: Icon(Icons.center_focus_weak, color: Colors.white),
+              heroTag: "showAllMarkers",
+            ),
+          ),
+      ],
     );
   }
 

@@ -9,7 +9,6 @@ import 'package:dedicated_cowboy/app/services/chat_service/chat_service.dart';
 import 'package:dedicated_cowboy/app/services/firebase_notifications/firebase_notification_service.dart';
 import 'package:dedicated_cowboy/bindings/initial_bindings.dart';
 import 'package:dedicated_cowboy/firebase_options.dart';
-import 'package:dedicated_cowboy/views/mails/mail_structure.dart';
 import 'package:dedicated_cowboy/views/welcome/welcome_view.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';

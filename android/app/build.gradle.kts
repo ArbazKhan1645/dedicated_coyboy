@@ -21,20 +21,20 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.dedicated_cowboy"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdkVersion(flutter.minSdkVersion)
-        multiDexEnabled = true
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-        }
+ defaultConfig {
+    // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+    applicationId = "com.example.dedicated_cowboy"
+    // You can update the following values to match your application needs.
+    // For more information, see: https://flutter.dev/to/review-gradle-config.
+    minSdk = 23  // Changed from minSdkVersion = 23
+    multiDexEnabled = true
+    targetSdk = flutter.targetSdkVersion
+    versionCode = flutter.versionCode
+    versionName = flutter.versionName
+    ndk {
+        abiFilters += listOf("armeabi-v7a", "arm64-v8a")
     }
+ }
 
     buildTypes {
     release {

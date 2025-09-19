@@ -808,12 +808,19 @@ class _WebsiteProductListingScreenState
 
             // Map widget (if needed)
             if (!isLoading && _filteredListings.isNotEmpty)
-              ListingsMapWidget(
-                listings: _filteredListings,
-                onListingTap: (listing) {
-                  widget.onProductTap(listing);
-                },
-                initialZoom: 12.0,
+              SizedBox(
+                height: 400,
+                child: InteractiveViewer(
+                  panEnabled: false,
+                  scaleEnabled: false,
+                  child: ListingsMapWidget(
+                    listings: _filteredListings,
+                    onListingTap: (listing) {
+                      widget.onProductTap(listing);
+                    },
+                    initialZoom: 15.0,
+                  ),
+                ),
               ),
           ],
         ),
