@@ -40,7 +40,7 @@ class ListAnItemScreen extends StatelessWidget {
 
                   // Title (centered)
                   Text(
-                    'List An Item',
+                    'List a Item',
                     style: Appthemes.textMedium.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,

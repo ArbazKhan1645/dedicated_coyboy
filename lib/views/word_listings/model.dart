@@ -71,19 +71,19 @@ class UnifiedListing {
     // 1. Extract from yoast_head_json.og_image
     final yoastHead = json['image_urls'] as Map<String, dynamic>?;
     if (yoastHead != null) {
-      featuredImage =
-          yoastHead['featured'] ??
-          yoastHead['featured_medium'] ??
-          yoastHead['featured_thumb'];
-      extractedImages.add(
-        ListingImage(
-          url: featuredImage,
-          width: null,
-          height: null,
-          type: 'image/jpeg',
-          source: 'yoast_head',
-        ),
-      );
+      // featuredImage =
+      //     yoastHead['featured'] ??
+      //     yoastHead['featured_medium'] ??
+      //     yoastHead['featured_thumb'];
+      // extractedImages.add(
+      //   ListingImage(
+      //     url: featuredImage,
+      //     width: null,
+      //     height: null,
+      //     type: 'image/jpeg',
+      //     source: 'yoast_head',
+      //   ),
+      // );
       if (yoastHead['gallery'] != null) {
         final gallery = yoastHead['gallery'] as List<dynamic>?;
         if (gallery != null) {

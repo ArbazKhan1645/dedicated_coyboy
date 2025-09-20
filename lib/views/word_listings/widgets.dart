@@ -385,7 +385,7 @@ class _UnifiedDetailScreenState extends State<UnifiedDetailScreen> {
                     imageUrl.toString(),
                     width: double.infinity,
                     height: double.infinity,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         color: Colors.grey[300],
@@ -1122,11 +1122,12 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
     if (_imageUrl.isNotEmpty) {
       return Image.network(
         _imageUrl,
-        width: double.infinity,
-        height: double.infinity,
+        // width: double.infinity,
+        // height: double.infinity,
+        fit: BoxFit.cover,
 
         // Enable caching and prevent rebuilding
-        cacheWidth: 400, // Optimize memory usage
+        // cacheWidth: 400, // Optimize memory usage
         cacheHeight: 340,
         filterQuality: FilterQuality.medium,
         errorBuilder: (context, error, stackTrace) {
@@ -1171,7 +1172,7 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
   }
 
   String? _getListingImageUrl(UnifiedListing listing) {
-    return listing.featuredImageUrl;
+    return listing.images?.first.url ?? listing.featuredImageUrl;
   }
 
   @override
@@ -1197,9 +1198,7 @@ class _UnifiedProductCardState extends State<UnifiedProductCard> {
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
+                  borderRadius: const BorderRadius.vertical(),
                   child: _cachedImage, // Use the cached image widget
                 ),
 

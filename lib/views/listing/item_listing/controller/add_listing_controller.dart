@@ -1373,13 +1373,10 @@ class ListItemController extends GetxController {
       };
       final body = {
         "slug": itemNameController.text.trim().replaceAll(' ', '-'),
-        "status": "Draft",
+        "status": "draft",
         "type": "at_biz_dir",
-        "title": {"rendered": "Statement piece dresser"},
-        "content": {
-          "rendered": "<p>${descriptionController.text.trim()}</p>\n",
-          "protected": false,
-        },
+        "title": "${itemNameController.text.trim()}",
+        "content": descriptionController.text.trim(),
         "author": Get.find<AuthService>().currentUser!.id,
         "comment_status": "open",
         "ping_status": "closed",
@@ -1389,87 +1386,109 @@ class ListItemController extends GetxController {
         "at_biz_dir-location": [],
         "at_biz_dir-tags": [],
         "acf": {"payment_options": null},
-        "_address": cityState,
-        "_manual_lat": latitude,
-        "_manual_lng": longitude,
+
         "_atbd_listing_pricing":
             double.tryParse(priceController.text.trim()) ?? 0.0,
-        "_price": double.tryParse(priceController.text.trim()) ?? 0.0,
-        "_email": emailController.text.trim(),
-        "_phone": phoneController.text.trim(),
+
         "_expiry_date": "2025-12-12 15:25:40",
         "_featured": "0",
         "_listing_status": "post_status",
+
         "_listing_prv_img": imageUrls.last,
-        "_thumbnail_id": imageUrls[0],
+
         "_fm_plans": "14753",
         "_listing_order_id": "17542",
-        "_listing_img": listingImg,
         "_atbdp_post_views_count": "0",
-        "_lat": latitude,
-        "_lng": longitude,
+        "meta": {
+          "_thumbnail_id": imageUrls[0],
+          "_featured_image": imageUrls[0],
+          "_custom-text-5": brandController.text,
+          "_custom-text-3": shippingController.text,
+          "_custom-text-2": sizeController.text,
+          "_custom-url-2": facebookController.text,
+          "_custom-text-6": paypalController.text,
+          "_custom-checkbox": [selectedCondition.value],
+          "_custom-text-7": cashappAccountController.text,
+          "_custom-checkbox-2": paymentMethods,
+          "_custom-checkbox-3": [selectedContactMethod.value],
+          "_custom-textarea": venmoAccountController.text,
+          "_custom-text": otherPaymentController.text,
+          "_price": double.tryParse(priceController.text.trim()) ?? 0.0,
+          "_email": emailController.text.trim(),
+          "_phone": phoneController.text.trim(),
+          "_address": cityState,
+          "_listing_img": listingImg,
+          "_lat": latitude,
+          "_lng": longitude,
+          "_manual_lat": latitude,
+          "_manual_lng": longitude,
+        },
       };
 
-      if (Get.find<AuthService>().currentUser?.isActiveSubscription == true) {
-        final response = await http.post(
-          Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/at_biz_dir'),
-          headers: {
-            "Authorization": "Bearer ${Get.find<AuthService>().currentToken}",
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: jsonEncode(body),
-        );
+      print(body);
+      print(Get.find<AuthService>().currentUser?.isActiveSubscription == true);
+      final response = await http.post(
+        Uri.parse('https://dedicatedcowboy.com/wp-json/wp/v2/at_biz_dir'),
+        headers: {
+          "Authorization": "Bearer ${Get.find<AuthService>().currentToken}",
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+      print(response.body);
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          _clearForm();
-          Get.until((route) => route.isFirst);
+      // if (Get.find<AuthService>().currentUser?.isActiveSubscription == true) {
 
-          if (isEditMode.value || pendingPayment) {
-            Get.to(() => ListingFavoritesScreen());
-          } else {
-            try {
-              final user = Get.find<AuthService>().currentUser;
-              if (user != null) {
-                await EmailTemplates.sendListingUnderReviewEmail(
-                  recipientEmail: user.email,
-                  recipientName: user.displayName ?? 'Dear Customer',
-                  listingTitle: itemNameController.text.trim(),
-                  listingUrl:
-                      'https://dedicatedcowboy.com/listing/${itemNameController.text}',
-                );
-              } else {
-                debugPrint(
-                  "Skipped sending subscription welcome email: user/email/displayName is null",
-                );
-              }
-            } catch (e, s) {
-              debugPrint("Error sending subscription welcome email: $e");
-              debugPrintStack(stackTrace: s);
-            }
+      //   if (response.statusCode == 200 || response.statusCode == 201) {
+      //     _clearForm();
+      //     Get.until((route) => route.isFirst);
 
-            Get.to(
-              () => FinalSubscriptionManagementScreen(
-                userId: Get.find<AuthService>().currentUser?.id ?? '',
-              ),
-            )?.then((c) {
-              Get.to(() => ListingFavoritesScreen());
-            });
-          }
-        } else {
-          _showErrorSnackbar(
-            'Error',
-            'Something went wrong. Please try again.',
-          );
-        }
-      } else {
-        Get.to(
-          () => FinalSubscriptionManagementScreen(
-            userId: Get.find<AuthService>().currentUser?.id ?? '',
-          ),
-        )?.then((c) {
-          Get.to(() => ListingFavoritesScreen());
-        });
-      }
+      //     if (isEditMode.value || pendingPayment) {
+      //       Get.to(() => ListingFavoritesScreen());
+      //     } else {
+      //       try {
+      //         final user = Get.find<AuthService>().currentUser;
+      //         if (user != null) {
+      //           await EmailTemplates.sendListingUnderReviewEmail(
+      //             recipientEmail: user.email,
+      //             recipientName: user.displayName ?? 'Dear Customer',
+      //             listingTitle: itemNameController.text.trim(),
+      //             listingUrl:
+      //                 'https://dedicatedcowboy.com/listing/${itemNameController.text}',
+      //           );
+      //         } else {
+      //           debugPrint(
+      //             "Skipped sending subscription welcome email: user/email/displayName is null",
+      //           );
+      //         }
+      //       } catch (e, s) {
+      //         debugPrint("Error sending subscription welcome email: $e");
+      //         debugPrintStack(stackTrace: s);
+      //       }
+
+      //       Get.to(
+      //         () => FinalSubscriptionManagementScreen(
+      //           userId: Get.find<AuthService>().currentUser?.id ?? '',
+      //         ),
+      //       )?.then((c) {
+      //         Get.to(() => ListingFavoritesScreen());
+      //       });
+      //     }
+      //   } else {
+      //     _showErrorSnackbar(
+      //       'Error',
+      //       'Something went wrong. Please try again.',
+      //     );
+      //   }
+      // } else {
+      //   Get.to(
+      //     () => FinalSubscriptionManagementScreen(
+      //       userId: Get.find<AuthService>().currentUser?.id ?? '',
+      //     ),
+      //   )?.then((c) {
+      //     Get.to(() => ListingFavoritesScreen());
+      //   });
+      // }
 
       // if (isEditMode.value) {
       //   // Update existing item

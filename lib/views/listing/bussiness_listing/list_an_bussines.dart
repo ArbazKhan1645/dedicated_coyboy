@@ -54,7 +54,7 @@ class _ListAnBussinessScreenState extends State<ListAnBussinessScreen> {
 
                   // Centered Title
                   Text(
-                    'List An Business',
+                    'List a Business',
                     style: Appthemes.textMedium.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,

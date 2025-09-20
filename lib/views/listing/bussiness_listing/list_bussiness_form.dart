@@ -52,7 +52,7 @@ class ListBusinessForm extends StatelessWidget {
                     // Search Bar
                     Expanded(
                       child: Text(
-                        'List A Business',
+                        'List your Business',
                         style: Appthemes.textMedium.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,

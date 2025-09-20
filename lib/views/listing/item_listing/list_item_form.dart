@@ -54,7 +54,7 @@ class ListItemForm extends StatelessWidget {
                     // Search Bar
                     Expanded(
                       child: Text(
-                        'List An Item',
+                        'List your Item',
                         style: Appthemes.textMedium.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -189,7 +189,7 @@ class ListItemForm extends StatelessWidget {
                   }
 
                   return CustomMultiSelectField(
-                    title: 'Select Category',
+                    title: 'Select Categorys',
                     hint: 'Category',
                     categories: snapshot.data!,
                     selectedCategories: controller.selectedCategories,

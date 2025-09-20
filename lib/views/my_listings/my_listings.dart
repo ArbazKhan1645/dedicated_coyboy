@@ -124,7 +124,7 @@ class ListingApiService {
   Future<List<Listing>> getUserListings(int authorId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/listings?author=$authorId'),
+        Uri.parse('$baseUrl/listings?author=$authorId?per_page=100'),
         headers: {'Content-Type': 'application/json'},
       );
 

@@ -56,7 +56,7 @@ class _ListAnEventScreenState extends State<ListAnEventScreen> {
 
                   // Centered Title
                   Text(
-                    'List An Event',
+                    'List a Event',
                     style: Appthemes.textMedium.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,

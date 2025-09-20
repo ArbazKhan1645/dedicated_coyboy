@@ -52,7 +52,7 @@ class ListEventForm extends StatelessWidget {
                     // Search Bar
                     Expanded(
                       child: Text(
-                        'List An Event',
+                        'List your Event',
                         style: Appthemes.textMedium.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
